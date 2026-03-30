@@ -61,7 +61,7 @@ export const grades = pgTable('grades', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (t) => [
-        unique('unq_pre').on(t.studentId, t.subjectId, t.courseId),
+        unique('unq_sub_cour').on(t.studentId, t.subjectId, t.courseId),
     ]
 );
 
@@ -72,7 +72,7 @@ export const subjectReservations = pgTable('subject_reservations', {
   reservedAt: timestamp('reserved_at').defaultNow(),
   status: reservationStatusEnum('status').default('reserved'),
 }, (t) => [
-        unique('unq_pre').on(t.studentId, t.subjectId),
+        unique('unq_sub').on(t.studentId, t.subjectId),
     ]
 );
 
@@ -82,7 +82,7 @@ export const subjectPrerequisites = pgTable('subject_prerequisites', {
   prerequisiteSubjectId: uuid('prerequisite_subject_id').references(() => subjects.id).notNull(),
   createdAt: timestamp('created_at').defaultNow(),
 }, (t) => [
-        unique('unq_pre').on(t.subjectId, t.prerequisiteSubjectId),
+        unique('unq_preq').on(t.subjectId, t.prerequisiteSubjectId),
         check('self_ref_check', sql`${t.subjectId} <> ${t.prerequisiteSubjectId}`),
     ]
 );

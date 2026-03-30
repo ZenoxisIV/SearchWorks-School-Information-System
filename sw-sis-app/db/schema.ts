@@ -1,8 +1,8 @@
-import { pgTable, uuid, text, date, timestamp, integer, numeric, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, date, timestamp, integer, numeric, pgEnum, unique, check } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const reservationStatusEnum = pgEnum('status', ['reserved', 'cancelled']);
 
-// 1. COURSES
 export const courses = pgTable('courses', {
   id: uuid('id').primaryKey().defaultRandom(),
   code: text('code').notNull().unique(),
@@ -12,18 +12,20 @@ export const courses = pgTable('courses', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-// 2. SUBJECTS
 export const subjects = pgTable('subjects', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  courseId: uuid('course_id').references(() => courses.id),
-  code: text('code').notNull(),
-  title: text('title').notNull(),
-  units: integer('units').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+    id: uuid('id').primaryKey().defaultRandom(),
+    courseId: uuid('course_id').references(() => courses.id).notNull(),
+    code: text('code').notNull(),
+    title: text('title').notNull(),
+    units: integer('units').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  }, (t) => [
+        unique('unq_code').on(t.courseId, t.code),
+        unique('unq_title').on(t.courseId, t.title),
+    ]
+);
 
-// 3. STUDENTS
 export const students = pgTable('students', {
   id: uuid('id').primaryKey().defaultRandom(),
   studentNo: text('student_no').notNull().unique(),
@@ -31,12 +33,11 @@ export const students = pgTable('students', {
   lastName: text('last_name').notNull(),
   email: text('email').unique(),
   birthDate: date('birth_date').notNull(),
-  courseId: uuid('course_id').references(() => courses.id),
+  courseId: uuid('course_id').references(() => courses.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-// 4. USERS (Teachers/Admin/Staff/etc.)
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
@@ -46,7 +47,6 @@ export const users = pgTable('users', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-// 5. GRADES
 export const grades = pgTable('grades', {
   id: uuid('id').primaryKey().defaultRandom(),
   studentId: uuid('student_id').references(() => students.id).notNull(),
@@ -57,24 +57,32 @@ export const grades = pgTable('grades', {
   finals: numeric('finals'),
   finalGrade: numeric('final_grade'),
   remarks: text('remarks'),
-  encodedByUserId: uuid('encoded_by_user_id').references(() => users.id),
+  encodedByUserId: uuid('encoded_by_user_id').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (t) => [
+        unique('unq_pre').on(t.studentId, t.subjectId, t.courseId),
+    ]
+);
 
-// 6. SUBJECT RESERVATIONS
 export const subjectReservations = pgTable('subject_reservations', {
   id: uuid('id').primaryKey().defaultRandom(),
-  studentId: uuid('student_id').references(() => students.id),
-  subjectId: uuid('subject_id').references(() => subjects.id),
+  studentId: uuid('student_id').references(() => students.id).notNull(),
+  subjectId: uuid('subject_id').references(() => subjects.id).notNull(),
   reservedAt: timestamp('reserved_at').defaultNow(),
-  status: reservationStatusEnum('status'),
-});
+  status: reservationStatusEnum('status').default('reserved'),
+}, (t) => [
+        unique('unq_pre').on(t.studentId, t.subjectId),
+    ]
+);
 
-// 7. SUBJECT PREREQUISITES
 export const subjectPrerequisites = pgTable('subject_prerequisites', {
   id: uuid('id').primaryKey().defaultRandom(),
-  subjectId: uuid('subject_id').references(() => subjects.id),
-  prerequisiteSubjectId: uuid('prerequisite_subject_id').references(() => subjects.id),
+  subjectId: uuid('subject_id').references(() => subjects.id).notNull(),
+  prerequisiteSubjectId: uuid('prerequisite_subject_id').references(() => subjects.id).notNull(),
   createdAt: timestamp('created_at').defaultNow(),
-});
+}, (t) => [
+        unique('unq_pre').on(t.subjectId, t.prerequisiteSubjectId),
+        check('self_ref_check', sql`${t.subjectId} <> ${t.prerequisiteSubjectId}`),
+    ]
+);

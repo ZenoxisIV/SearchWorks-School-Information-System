@@ -70,3 +70,11 @@ export const subjectReservations = pgTable('subject_reservations', {
   reservedAt: timestamp('reserved_at').defaultNow(),
   status: reservationStatusEnum('status'),
 });
+
+// 7. SUBJECT PREREQUISITES
+export const subjectPrerequisites = pgTable('subject_prerequisites', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  subjectId: uuid('subject_id').references(() => subjects.id),
+  prerequisiteSubjectId: uuid('prerequisite_subject_id').references(() => subjects.id),
+  createdAt: timestamp('created_at').defaultNow(),
+});

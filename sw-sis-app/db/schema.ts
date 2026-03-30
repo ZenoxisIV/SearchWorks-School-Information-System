@@ -1,5 +1,7 @@
 import { pgTable, uuid, text, date, timestamp, integer, numeric, pgEnum } from 'drizzle-orm/pg-core';
 
+export const reservationStatusEnum = pgEnum('status', ['reserved', 'cancelled']);
+
 // 1. COURSES
 export const courses = pgTable('courses', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -58,4 +60,13 @@ export const grades = pgTable('grades', {
   encodedByUserId: uuid('encoded_by_user_id').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// 6. SUBJECT RESERVATIONS
+export const subjectReservations = pgTable('subject_reservations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  studentId: uuid('student_id').references(() => students.id),
+  subjectId: uuid('subject_id').references(() => subjects.id),
+  reservedAt: timestamp('reserved_at').defaultNow(),
+  status: reservationStatusEnum('status'),
 });

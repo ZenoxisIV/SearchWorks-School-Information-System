@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, date, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, date, timestamp, integer, numeric, pgEnum } from 'drizzle-orm/pg-core';
 
 // 1. COURSES
 export const courses = pgTable('courses', {
@@ -40,6 +40,22 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   role: text('role').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// 5. GRADES
+export const grades = pgTable('grades', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  studentId: uuid('student_id').references(() => students.id).notNull(),
+  subjectId: uuid('subject_id').references(() => subjects.id).notNull(),
+  courseId: uuid('course_id').references(() => courses.id).notNull(),
+  prelim: numeric('prelim'),
+  midterm: numeric('midterm'),
+  finals: numeric('finals'),
+  finalGrade: numeric('final_grade'),
+  remarks: text('remarks'),
+  encodedByUserId: uuid('encoded_by_user_id').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

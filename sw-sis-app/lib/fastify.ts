@@ -4,7 +4,7 @@ import cookie from "@fastify/cookie";
 import bcrypt from "bcrypt";
 import { db } from "@/db";
 import * as s from "@/db/schema";
-import { ilike, eq } from "drizzle-orm";
+import { ilike, eq, inArray } from "drizzle-orm";
 
 declare module "fastify" {
     export interface FastifyInstance {
@@ -114,7 +114,7 @@ app.patch('/api/students/:studentNo', { onRequest: [app.authenticate] }, async (
         lastName: body.lastName,
         email: body.email,
         birthDate: body.birthDate,
-        // Add courseId if it's still a required field in your schema
+        // ! Note: Add courseId
       })
       .where(eq(s.students.studentNo, studentNo))
       .returning();
@@ -126,5 +126,43 @@ app.patch('/api/students/:studentNo', { onRequest: [app.authenticate] }, async (
     return updatedStudent[0];
   } catch (err) {
     return reply.status(500).send({ message: "Failed to update student" });
+  }
+});
+
+// Delete a single student
+app.delete('/api/students/:studentNo', { onRequest: [app.authenticate] }, async (request, reply) => {
+  try {
+    const { studentNo } = request.params as { studentNo: string };
+    const deleted = await db
+      .delete(s.students)
+      .where(eq(s.students.studentNo, studentNo))
+      .returning();
+
+    if (deleted.length === 0) return reply.status(404).send({ message: 'Student not found' });
+
+    return { message: 'Student deleted successfully' };
+  } catch (err) {
+    console.error(err);
+    return reply.status(500).send({ message: 'Failed to delete student' });
+  }
+});
+
+// Bulk delete
+app.delete('/api/students', { onRequest: [app.authenticate] }, async (request, reply) => {
+  try {
+    const { studentNos } = request.body as { studentNos: string[] };
+
+    if (!Array.isArray(studentNos) || studentNos.length === 0) {
+      return reply.status(400).send({ message: 'No student IDs provided' });
+    }
+
+    await db
+      .delete(s.students)
+      .where(inArray(s.students.studentNo, studentNos));
+
+    return { message: `Deleted ${studentNos.length} students successfully` };
+  } catch (err) {
+    console.error(err);
+    return reply.status(500).send({ message: 'Failed to delete students' });
   }
 });

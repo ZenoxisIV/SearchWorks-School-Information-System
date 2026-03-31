@@ -404,7 +404,12 @@ export default function StudentsPage() {
 
                     {/* Pagination */}
                     <div className="flex justify-end gap-2 mt-4">
-                        <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage((p) => p - 1)}
+                        >
                             Previous
                         </Button>
                         <span className="flex items-center px-2">
@@ -412,7 +417,7 @@ export default function StudentsPage() {
                         </span>
                         <Button
                             size="sm"
-							variant="outline"
+                            variant="outline"
                             disabled={currentPage === totalPages || totalPages === 0}
                             onClick={() => setCurrentPage((p) => p + 1)}
                         >

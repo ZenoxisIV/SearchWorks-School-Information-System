@@ -146,9 +146,7 @@ export default function CoursesPage() {
 
     // --- Bulk Delete ---
     const toggleSelect = (id: string) => {
-        setSelectedCourses((prev) =>
-            prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
-        );
+        setSelectedCourses((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
     };
 
     const handleBulkDelete = async () => {
@@ -276,73 +274,115 @@ export default function CoursesPage() {
                                         <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                                     </TableCell>
                                 </TableRow>
-                            ) : paginated.map((course) => {
-                                const isEditing = editingId === course.id;
-                                return (
-                                    <TableRow key={course.id}>
-                                        <TableCell>
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedCourses.includes(course.id)}
-                                                onChange={() => toggleSelect(course.id)}
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            {isEditing ? (
-                                                <Input
-                                                    value={editData.code}
-                                                    onChange={(e) => setEditData({ ...editData, code: e.target.value })}
-                                                    className="h-8 w-24"
+                            ) : (
+                                paginated.map((course) => {
+                                    const isEditing = editingId === course.id;
+                                    return (
+                                        <TableRow key={course.id}>
+                                            <TableCell>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedCourses.includes(course.id)}
+                                                    onChange={() => toggleSelect(course.id)}
                                                 />
-                                            ) : course.code}
-                                        </TableCell>
-                                        <TableCell>
-                                            {isEditing ? (
-                                                <Input
-                                                    value={editData.name}
-                                                    onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                                                    className="h-8"
-                                                />
-                                            ) : course.name}
-                                        </TableCell>
-                                        <TableCell>
-                                            {isEditing ? (
-                                                <Input
-                                                    value={editData.description}
-                                                    onChange={(e) => setEditData({ ...editData, description: e.target.value })}
-                                                    className="h-8"
-                                                />
-                                            ) : course.description}
-                                        </TableCell>
-                                        <TableCell className="text-right flex justify-end gap-2">
-                                            {isEditing ? (
-                                                <>
-                                                    <Button size="icon" variant="ghost" onClick={() => saveEdit(course.id)} disabled={isSaving}>
-                                                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                                                    </Button>
-                                                    <Button size="icon" variant="ghost" className="text-red-600" onClick={cancelEdit} disabled={isSaving}>
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Button size="icon" variant="secondary" onClick={() => startEdit(course)}>
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button size="icon" variant="destructive" onClick={() => handleDelete(course.id)}>
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })}
+                                            </TableCell>
+                                            <TableCell>
+                                                {isEditing ? (
+                                                    <Input
+                                                        value={editData.code}
+                                                        onChange={(e) =>
+                                                            setEditData({ ...editData, code: e.target.value })
+                                                        }
+                                                        className="h-8 w-24"
+                                                    />
+                                                ) : (
+                                                    course.code
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                {isEditing ? (
+                                                    <Input
+                                                        value={editData.name}
+                                                        onChange={(e) =>
+                                                            setEditData({ ...editData, name: e.target.value })
+                                                        }
+                                                        className="h-8"
+                                                    />
+                                                ) : (
+                                                    course.name
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                {isEditing ? (
+                                                    <Input
+                                                        value={editData.description}
+                                                        onChange={(e) =>
+                                                            setEditData({ ...editData, description: e.target.value })
+                                                        }
+                                                        className="h-8"
+                                                    />
+                                                ) : (
+                                                    course.description
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-right flex justify-end gap-2">
+                                                {isEditing ? (
+                                                    <>
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            onClick={() => saveEdit(course.id)}
+                                                            disabled={isSaving}
+                                                        >
+                                                            {isSaving ? (
+                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                            ) : (
+                                                                <Check className="h-4 w-4" />
+                                                            )}
+                                                        </Button>
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="text-red-600"
+                                                            onClick={cancelEdit}
+                                                            disabled={isSaving}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Button
+                                                            size="icon"
+                                                            variant="secondary"
+                                                            onClick={() => startEdit(course)}
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            size="icon"
+                                                            variant="destructive"
+                                                            onClick={() => handleDelete(course.id)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })
+                            )}
                         </TableBody>
                     </Table>
 
                     <div className="flex justify-end gap-2 mt-4">
-                        <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage((p) => p - 1)}
+                        >
                             Previous
                         </Button>
                         <span className="flex items-center px-2 text-sm text-muted-foreground">

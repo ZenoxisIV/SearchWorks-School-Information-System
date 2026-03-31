@@ -4,12 +4,23 @@ import cookie from "@fastify/cookie";
 import bcrypt from "bcrypt";
 import { db } from "@/db";
 import * as s from "@/db/schema";
-import { ilike, eq, inArray } from "drizzle-orm";
+import { ilike, eq, inArray, and } from "drizzle-orm";
 
 declare module "fastify" {
     export interface FastifyInstance {
         authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     }
+}
+
+// --- CIRCULAR PREREQUISITE CHECKER ---
+async function isCircular(startId: string, targetId: string): Promise<boolean> {
+    const current = await db.select().from(s.subjectPrerequisites).where(eq(s.subjectPrerequisites.subjectId, startId));
+
+    for (const row of current) {
+        if (row.prerequisiteSubjectId === targetId) return true;
+        if (await isCircular(row.prerequisiteSubjectId, targetId)) return true;
+    }
+    return false;
 }
 
 export const app = Fastify({ logger: true });
@@ -238,6 +249,7 @@ app.patch("/api/courses/:id", { onRequest: [app.authenticate] }, async (request,
     }
 });
 
+// Delete a single course
 app.delete("/api/courses/:id", { onRequest: [app.authenticate] }, async (request, reply) => {
     try {
         const { id } = request.params as { id: string };
@@ -250,6 +262,7 @@ app.delete("/api/courses/:id", { onRequest: [app.authenticate] }, async (request
     }
 });
 
+// Bulk delete
 app.delete("/api/courses", { onRequest: [app.authenticate] }, async (request, reply) => {
     try {
         const { ids } = request.body as { ids: string[] };
@@ -321,6 +334,7 @@ app.patch("/api/subjects/:id", { onRequest: [app.authenticate] }, async (request
     }
 });
 
+// Delete a single subject
 app.delete("/api/subjects/:id", { onRequest: [app.authenticate] }, async (request, reply) => {
     try {
         const { id } = request.params as { id: string };
@@ -331,6 +345,7 @@ app.delete("/api/subjects/:id", { onRequest: [app.authenticate] }, async (reques
     }
 });
 
+// Bulk delete
 app.delete("/api/subjects", { onRequest: [app.authenticate] }, async (request, reply) => {
     try {
         const { ids } = request.body as { ids: string[] };
@@ -340,4 +355,69 @@ app.delete("/api/subjects", { onRequest: [app.authenticate] }, async (request, r
     } catch {
         return reply.status(500).send({ message: "Failed to delete subjects" });
     }
+});
+
+// --- PREREQUISITE ROUTES ---
+app.get("/api/subjects/:id/prerequisites", { onRequest: [app.authenticate] }, async (req) => {
+    const { id } = req.params as { id: string };
+    return db
+        .select({
+            id: s.subjects.id,
+            code: s.subjects.code,
+            title: s.subjects.title,
+        })
+        .from(s.subjectPrerequisites)
+        .innerJoin(s.subjects, eq(s.subjectPrerequisites.prerequisiteSubjectId, s.subjects.id))
+        .where(eq(s.subjectPrerequisites.subjectId, id));
+});
+
+app.post("/api/subjects/:id/prerequisites", { onRequest: [app.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { prerequisiteSubjectId } = request.body as { prerequisiteSubjectId: string };
+
+    if (id === prerequisiteSubjectId) {
+        return reply.status(400).send({ message: "A subject cannot be its own prerequisite" });
+    }
+
+    const [targetSubject, prereqSubject] = await Promise.all([
+        db.select().from(s.subjects).where(eq(s.subjects.id, id)).limit(1),
+        db.select().from(s.subjects).where(eq(s.subjects.id, prerequisiteSubjectId)).limit(1),
+    ]);
+
+    if (!targetSubject[0] || !prereqSubject[0]) {
+        return reply.status(404).send({ message: "Subject not found" });
+    }
+
+    // COURSE ID CHECK
+    if (targetSubject[0].courseId !== prereqSubject[0].courseId) {
+        return reply.status(400).send({
+            message: "Prerequisites must belong to the same course.",
+        });
+    }
+
+    // Circular Check
+    const circular = await isCircular(prerequisiteSubjectId, id);
+    if (circular) {
+        return reply.status(400).send({ message: "Circular prerequisite detected!" });
+    }
+
+    try {
+        await db.insert(s.subjectPrerequisites).values({
+            subjectId: id,
+            prerequisiteSubjectId,
+        });
+        return { message: "Prerequisite added" };
+    } catch (err) {
+        return reply.status(400).send({ message: "Prerequisite already exists" });
+    }
+});
+
+app.delete("/api/subjects/:id/prerequisites/:prereqId", { onRequest: [app.authenticate] }, async (req) => {
+    const { id, prereqId } = req.params as { id: string; prereqId: string };
+    await db
+        .delete(s.subjectPrerequisites)
+        .where(
+            and(eq(s.subjectPrerequisites.subjectId, id), eq(s.subjectPrerequisites.prerequisiteSubjectId, prereqId)),
+        );
+    return { message: "Prerequisite removed" };
 });

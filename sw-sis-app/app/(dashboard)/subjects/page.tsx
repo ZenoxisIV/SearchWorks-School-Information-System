@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Check, X, Trash2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Check, X, Trash2, Layers, BookOpen } from "lucide-react";
 
 export default function SubjectsPage() {
     const [subjects, setSubjects] = useState<any[]>([]);
@@ -101,6 +101,45 @@ export default function SubjectsPage() {
         fetchSubjects();
     };
 
+    const [prereqOpen, setPrereqOpen] = useState(false);
+    const [activeSubject, setActiveSubject] = useState<any>(null);
+    const [prereqs, setPrereqs] = useState<any[]>([]);
+
+    const fetchPrereqs = async (id: string) => {
+        const res = await fetch(`/api/subjects/${id}/prerequisites`, { credentials: "include" });
+        setPrereqs(await res.json());
+    };
+
+    const handleOpenPrereqs = (subject: any) => {
+        setActiveSubject(subject);
+        fetchPrereqs(subject.id);
+        setPrereqOpen(true);
+    };
+
+    const handleAddPrereq = async (prereqId: string) => {
+        const res = await fetch(`/api/subjects/${activeSubject.id}/prerequisites`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prerequisiteSubjectId: prereqId }),
+            credentials: "include",
+        });
+        if (res.ok) {
+            toast.success("Added");
+            fetchPrereqs(activeSubject.id);
+        } else {
+            const err = await res.json();
+            toast.error(err.message);
+        }
+    };
+
+    const removePrereq = async (prereqId: string) => {
+        await fetch(`/api/subjects/${activeSubject.id}/prerequisites/${prereqId}`, {
+            method: "DELETE",
+            credentials: "include",
+        });
+        fetchPrereqs(activeSubject.id);
+    };
+
     // Pagination Logic
     const paginated = subjects.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
     const totalPages = Math.ceil(subjects.length / itemsPerPage);
@@ -164,6 +203,63 @@ export default function SubjectsPage() {
                                     {isSubmitting ? <Loader2 className="animate-spin" /> : "Save Subject"}
                                 </Button>
                             </form>
+                        </DialogContent>
+                    </Dialog>
+                    <Dialog open={prereqOpen} onOpenChange={setPrereqOpen}>
+                        <DialogContent className="max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>Prerequisites: {activeSubject?.title}</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                                <div className="border rounded-md p-2 max-h-40 overflow-y-auto">
+                                    {prereqs.length === 0 && (
+                                        <p className="text-sm text-muted-foreground">No prerequisites set.</p>
+                                    )}
+                                    {prereqs.map((p) => (
+                                        <div
+                                            key={p.id}
+                                            className="flex justify-between items-center p-2 hover:bg-muted rounded-sm"
+                                        >
+                                            <span className="text-sm font-medium">
+                                                {p.code} - {p.title}
+                                            </span>
+                                            <Button variant="ghost" size="icon" onClick={() => removePrereq(p.id)}>
+                                                <X className="h-4 w-4 text-red-500" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Add Prerequisite</Label>
+                                    <select
+                                        className="w-full p-2 border rounded-md bg-background"
+                                        onChange={(e) => handleAddPrereq(e.target.value)}
+                                        value=""
+                                    >
+                                        <option value="" disabled>
+                                            Select a subject...
+                                        </option>
+                                        {subjects
+                                            .filter(
+                                                (sub) =>
+                                                    // Self-reference check
+                                                    sub.id !== activeSubject?.id &&
+                                                    // Not already a prereq
+                                                    !prereqs.find((p) => p.id === sub.id) &&
+                                                    // Course match
+                                                    sub.courseId === activeSubject?.courseId,
+                                            )
+                                            .map((sub) => (
+                                                <option key={sub.id} value={sub.id}>
+                                                    {sub.code} - {sub.title}
+                                                </option>
+                                            ))}
+                                    </select>
+                                    <p className="text-[10px] text-muted-foreground italic">
+                                        * Only subjects within the same course are displayed.
+                                    </p>
+                                </div>
+                            </div>
                         </DialogContent>
                     </Dialog>
                 </div>
@@ -272,6 +368,13 @@ export default function SubjectsPage() {
                                                     </>
                                                 ) : (
                                                     <>
+                                                        <Button
+                                                            size="icon"
+                                                            variant="outline"
+                                                            onClick={() => handleOpenPrereqs(s)}
+                                                        >
+                                                            <Layers className="h-4 w-4" />
+                                                        </Button>
                                                         <Button
                                                             size="icon"
                                                             variant="secondary"

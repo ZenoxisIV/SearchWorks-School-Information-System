@@ -101,3 +101,30 @@ app.post('/api/students', { onRequest: [app.authenticate] }, async (request, rep
     return reply.status(500).send({ message: "Failed to create student" });
   }
 });
+
+app.patch('/api/students/:studentNo', { onRequest: [app.authenticate] }, async (request, reply) => {
+  try {
+    const { studentNo } = request.params as { studentNo: string };
+    const body = request.body as any;
+
+    const updatedStudent = await db
+      .update(s.students)
+      .set({
+        firstName: body.firstName,
+        lastName: body.lastName,
+        email: body.email,
+        birthDate: body.birthDate,
+        // Add courseId if it's still a required field in your schema
+      })
+      .where(eq(s.students.studentNo, studentNo))
+      .returning();
+
+    if (updatedStudent.length === 0) {
+      return reply.status(404).send({ message: "Student not found" });
+    }
+
+    return updatedStudent[0];
+  } catch (err) {
+    return reply.status(500).send({ message: "Failed to update student" });
+  }
+});

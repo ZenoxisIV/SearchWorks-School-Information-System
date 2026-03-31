@@ -2,19 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Loader2, UserX, Plus } from "lucide-react";
+import { Loader2, Plus, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
 export default function StudentsPage() {
     const [students, setStudents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editData, setEditData] = useState<any>(null);
+    const [isSaving, setIsSaving] = useState(false);
     const [open, setOpen] = useState(false);
     const router = useRouter();
 
@@ -46,6 +49,40 @@ export default function StudentsPage() {
         }
     };
 
+    const startEdit = (student: any) => {
+        setEditingId(student.studentNo);
+        setEditData({ ...student });
+    };
+
+    const cancelEdit = () => {
+        setEditingId(null);
+        setEditData(null);
+    };
+
+    const saveEdit = async (studentNo: string) => {
+        setIsSaving(true);
+        try {
+            const res = await fetch(`/api/students/${studentNo}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(editData),
+                credentials: "include",
+            });
+
+            if (res.ok) {
+                toast.success("Updated successfully");
+                setEditingId(null);
+                fetchStudents(); // Refresh data
+            } else {
+                toast.error("Update failed");
+            }
+        } catch (error) {
+            toast.error("Error saving changes");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const handleAddStudent = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsAdding(true);
@@ -60,9 +97,9 @@ export default function StudentsPage() {
 
             if (res.ok) {
                 toast.success("Student added successfully!");
-                setOpen(false); // Close Modal
+                setOpen(false);
                 setFormData({ firstName: "", lastName: "", email: "", birthDate: "" }); // Reset
-                fetchStudents(); // Refresh List
+                fetchStudents();
             } else {
                 const err = await res.json();
                 toast.error(err.message || "Failed to add student");
@@ -86,7 +123,6 @@ export default function StudentsPage() {
                     <p className="text-muted-foreground">View and manage enrolled student records.</p>
                 </div>
 
-                {/* Add Student Modal */}
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogTrigger asChild>
                         <Button className="gap-2">
@@ -148,52 +184,114 @@ export default function StudentsPage() {
                 </Dialog>
             </div>
 
-            <Card className="shadow-sm">
-                <CardHeader>
-                    <CardTitle>All Students</CardTitle>
-                </CardHeader>
+            <Card>
                 <CardContent>
-                    {loading ? (
-                        <div className="flex h-32 items-center justify-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
-                    ) : students.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-center">
-                            <UserX className="h-10 w-10 text-muted-foreground mb-4" />
-                            <p className="text-lg font-medium">No students found</p>
-                        </div>
-                    ) : (
-                        <div className="rounded-md border">
-                            <Table>
-                                <TableHeader className="bg-slate-50/50">
-                                    <TableRow>
-                                        <TableHead>Student No</TableHead>
-                                        <TableHead>First Name</TableHead>
-                                        <TableHead>Last Name</TableHead>
-                                        <TableHead>Email</TableHead>
-                                        <TableHead>Birth Date</TableHead>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Student No</TableHead>
+                                <TableHead>First Name</TableHead>
+                                <TableHead>Last Name</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {students.map((student) => {
+                                const isEditing = editingId === student.studentNo;
+
+                                return (
+                                    <TableRow key={student.studentNo}>
+                                        <TableCell className="font-mono text-xs">{student.studentNo}</TableCell>
+
+                                        {/* First Name Cell */}
+                                        <TableCell>
+                                            {isEditing ? (
+                                                <Input
+                                                    value={editData.firstName}
+                                                    onChange={(e) =>
+                                                        setEditData({ ...editData, firstName: e.target.value })
+                                                    }
+                                                    className="h-8"
+                                                />
+                                            ) : (
+                                                student.firstName
+                                            )}
+                                        </TableCell>
+
+                                        {/* Last Name Cell */}
+                                        <TableCell>
+                                            {isEditing ? (
+                                                <Input
+                                                    value={editData.lastName}
+                                                    onChange={(e) =>
+                                                        setEditData({ ...editData, lastName: e.target.value })
+                                                    }
+                                                    className="h-8"
+                                                />
+                                            ) : (
+                                                student.lastName
+                                            )}
+                                        </TableCell>
+
+                                        {/* Email Cell */}
+                                        <TableCell>
+                                            {isEditing ? (
+                                                <Input
+                                                    value={editData.email}
+                                                    onChange={(e) =>
+                                                        setEditData({ ...editData, email: e.target.value })
+                                                    }
+                                                    className="h-8"
+                                                />
+                                            ) : (
+                                                student.email
+                                            )}
+                                        </TableCell>
+
+                                        {/* Action Buttons */}
+                                        <TableCell className="text-right">
+                                            {isEditing ? (
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-8 w-8 text-green-600"
+                                                        onClick={() => saveEdit(student.studentNo)}
+                                                        disabled={isSaving}
+                                                    >
+                                                        {isSaving ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <Check className="h-4 w-4" />
+                                                        )}
+                                                    </Button>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-8 w-8 text-red-600"
+                                                        onClick={cancelEdit}
+                                                        disabled={isSaving}
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-8 w-8"
+                                                    onClick={() => startEdit(student)}
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                        </TableCell>
                                     </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {students.map((student) => (
-                                        <TableRow key={student.studentNo}>
-                                            <TableCell className="font-mono text-xs font-semibold">
-                                                {student.studentNo}
-                                            </TableCell>
-                                            <TableCell>{student.firstName}</TableCell>
-                                            <TableCell>{student.lastName}</TableCell>
-                                            <TableCell>{student.email}</TableCell>
-                                            <TableCell>
-                                                {student.birthDate
-                                                    ? new Date(student.birthDate).toLocaleDateString()
-                                                    : "N/A"}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    )}
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
                 </CardContent>
             </Card>
         </div>

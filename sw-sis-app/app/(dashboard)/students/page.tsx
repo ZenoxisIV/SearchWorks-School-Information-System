@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Check, X, UserX } from "lucide-react";
+import { Loader2, Plus, Pencil, Check, X, Trash2 } from "lucide-react";
 
 export default function StudentsPage() {
     const [students, setStudents] = useState<any[]>([]);
@@ -99,7 +99,7 @@ export default function StudentsPage() {
     };
 
     // --- Add Student ---
-    const handleAddStudent = async (e: React.FormEvent) => {
+    const handleAddStudent = async (e: React.SubmitEvent) => {
         e.preventDefault();
         setIsAdding(true);
         try {
@@ -358,7 +358,6 @@ export default function StudentsPage() {
                                                     <Button
                                                         size="icon"
                                                         variant="ghost"
-                                                        className="text-green-600"
                                                         onClick={() => saveEdit(student.studentNo)}
                                                         disabled={isSaving}
                                                     >
@@ -382,7 +381,7 @@ export default function StudentsPage() {
                                                 <>
                                                     <Button
                                                         size="icon"
-                                                        variant="ghost"
+                                                        variant="secondary"
                                                         onClick={() => startEdit(student)}
                                                     >
                                                         <Pencil className="h-4 w-4" />
@@ -392,7 +391,7 @@ export default function StudentsPage() {
                                                         variant="destructive"
                                                         onClick={() => handleDelete(student.studentNo)}
                                                     >
-                                                        <UserX className="h-4 w-4" />
+                                                        <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </>
                                             )}
@@ -405,7 +404,7 @@ export default function StudentsPage() {
 
                     {/* Pagination */}
                     <div className="flex justify-end gap-2 mt-4">
-                        <Button size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>
+                        <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>
                             Previous
                         </Button>
                         <span className="flex items-center px-2">
@@ -413,6 +412,7 @@ export default function StudentsPage() {
                         </span>
                         <Button
                             size="sm"
+							variant="outline"
                             disabled={currentPage === totalPages || totalPages === 0}
                             onClick={() => setCurrentPage((p) => p + 1)}
                         >

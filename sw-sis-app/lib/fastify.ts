@@ -65,8 +65,8 @@ app.post("/api/auth/logout", async (request, reply) => {
     return reply.clearCookie("token", { path: "/" }).send({ message: "Logged out" });
 });
 
-// --- DATA ROUTES ---
-app.get("/api/students", async (req) => {
+// --- PROTECTED DATA ROUTES ---
+app.get("/api/students", { onRequest: [app.authenticate] }, async (req) => {
     const { search } = req.query as { search?: string };
     return db
         .select()

@@ -66,6 +66,7 @@ app.post("/api/auth/logout", async (request, reply) => {
 });
 
 // --- PROTECTED DATA ROUTES ---
+// STUDENTS
 app.get("/api/students", { onRequest: [app.authenticate] }, async (req) => {
     const { search } = req.query as { search?: string };
     return db
@@ -74,200 +75,269 @@ app.get("/api/students", { onRequest: [app.authenticate] }, async (req) => {
         .where(search ? ilike(s.students.firstName, `%${search}%`) : undefined);
 });
 
-app.post('/api/students', { onRequest: [app.authenticate] }, async (request, reply) => {
-  try {
-    const body = request.body as any;
-    
-    // Simple validation
-    if (!body.firstName || !body.lastName || !body.email) {
-      return reply.status(400).send({ message: "Missing required fields" });
+app.post("/api/students", { onRequest: [app.authenticate] }, async (request, reply) => {
+    try {
+        const body = request.body as any;
+
+        // Simple validation
+        if (!body.firstName || !body.lastName || !body.email) {
+            return reply.status(400).send({ message: "Missing required fields" });
+        }
+
+        // Generate a unique student number (e.g., 2026-1711900000)
+        const studentNo = `2026-${Date.now().toString().slice(-6)}`; // ! Note: Need a more robust generation strategy for production
+
+        const newStudent = await db
+            .insert(s.students)
+            .values({
+                studentNo,
+                firstName: body.firstName,
+                lastName: body.lastName,
+                email: body.email,
+                birthDate: body.birthDate,
+                courseId: "38468dd8-15d3-49b1-ba9e-b7281ecff469", // ! Note: Hardcoded Course ID for now
+            })
+            .returning();
+
+        return reply.status(201).send(newStudent[0]);
+    } catch (err) {
+        console.error("Insert error:", err);
+        return reply.status(500).send({ message: "Failed to create student" });
     }
-
-    // Generate a unique student number (e.g., 2026-1711900000)
-    const studentNo = `2026-${Date.now().toString().slice(-6)}`; // ! Note: Need a more robust generation strategy for production
-
-    const newStudent = await db.insert(s.students).values({
-      studentNo,
-      firstName: body.firstName,
-      lastName: body.lastName,
-      email: body.email,
-      birthDate: body.birthDate,
-      courseId: "38468dd8-15d3-49b1-ba9e-b7281ecff469" // ! Note: Hardcoded Course ID for now
-    }).returning();
-
-    return reply.status(201).send(newStudent[0]);
-  } catch (err) {
-    console.error("Insert error:", err);
-    return reply.status(500).send({ message: "Failed to create student" });
-  }
 });
 
-app.patch('/api/students/:studentNo', { onRequest: [app.authenticate] }, async (request, reply) => {
-  try {
-    const { studentNo } = request.params as { studentNo: string };
-    const body = request.body as any;
+app.patch("/api/students/:studentNo", { onRequest: [app.authenticate] }, async (request, reply) => {
+    try {
+        const { studentNo } = request.params as { studentNo: string };
+        const body = request.body as any;
 
-    const updatedStudent = await db
-      .update(s.students)
-      .set({
-        firstName: body.firstName,
-        lastName: body.lastName,
-        email: body.email,
-        birthDate: body.birthDate,
-        // ! Note: Add courseId
-      })
-      .where(eq(s.students.studentNo, studentNo))
-      .returning();
+        const updatedStudent = await db
+            .update(s.students)
+            .set({
+                firstName: body.firstName,
+                lastName: body.lastName,
+                email: body.email,
+                birthDate: body.birthDate,
+                // ! Note: Add courseId
+            })
+            .where(eq(s.students.studentNo, studentNo))
+            .returning();
 
-    if (updatedStudent.length === 0) {
-      return reply.status(404).send({ message: "Student not found" });
+        if (updatedStudent.length === 0) {
+            return reply.status(404).send({ message: "Student not found" });
+        }
+
+        return updatedStudent[0];
+    } catch (err) {
+        return reply.status(500).send({ message: "Failed to update student" });
     }
-
-    return updatedStudent[0];
-  } catch (err) {
-    return reply.status(500).send({ message: "Failed to update student" });
-  }
 });
 
 // Delete a single student
-app.delete('/api/students/:studentNo', { onRequest: [app.authenticate] }, async (request, reply) => {
-  try {
-    const { studentNo } = request.params as { studentNo: string };
-    const deleted = await db
-      .delete(s.students)
-      .where(eq(s.students.studentNo, studentNo))
-      .returning();
+app.delete("/api/students/:studentNo", { onRequest: [app.authenticate] }, async (request, reply) => {
+    try {
+        const { studentNo } = request.params as { studentNo: string };
+        const deleted = await db.delete(s.students).where(eq(s.students.studentNo, studentNo)).returning();
 
-    if (deleted.length === 0) return reply.status(404).send({ message: 'Student not found' });
+        if (deleted.length === 0) return reply.status(404).send({ message: "Student not found" });
 
-    return { message: 'Student deleted successfully' };
-  } catch (err) {
-    console.error(err);
-    return reply.status(500).send({ message: 'Failed to delete student' });
-  }
+        return { message: "Student deleted successfully" };
+    } catch (err) {
+        console.error(err);
+        return reply.status(500).send({ message: "Failed to delete student" });
+    }
 });
 
 // Bulk delete
-app.delete('/api/students', { onRequest: [app.authenticate] }, async (request, reply) => {
-  try {
-    const { studentNos } = request.body as { studentNos: string[] };
+app.delete("/api/students", { onRequest: [app.authenticate] }, async (request, reply) => {
+    try {
+        const { studentNos } = request.body as { studentNos: string[] };
 
-    if (!Array.isArray(studentNos) || studentNos.length === 0) {
-      return reply.status(400).send({ message: 'No student IDs provided' });
+        if (!Array.isArray(studentNos) || studentNos.length === 0) {
+            return reply.status(400).send({ message: "No student IDs provided" });
+        }
+
+        await db.delete(s.students).where(inArray(s.students.studentNo, studentNos));
+
+        return { message: `Deleted ${studentNos.length} students successfully` };
+    } catch (err) {
+        console.error(err);
+        return reply.status(500).send({ message: "Failed to delete students" });
     }
-
-    await db
-      .delete(s.students)
-      .where(inArray(s.students.studentNo, studentNos));
-
-    return { message: `Deleted ${studentNos.length} students successfully` };
-  } catch (err) {
-    console.error(err);
-    return reply.status(500).send({ message: 'Failed to delete students' });
-  }
 });
 
+// COURSES
 app.get("/api/courses", { onRequest: [app.authenticate] }, async (req) => {
-  const { search } = req.query as { search?: string };
+    const { search } = req.query as { search?: string };
 
-  return db
-    .select()
-    .from(s.courses)
-    .where(search ? ilike(s.courses.name, `%${search}%`) : undefined);
+    return db
+        .select()
+        .from(s.courses)
+        .where(search ? ilike(s.courses.name, `%${search}%`) : undefined);
 });
 
 app.post("/api/courses", { onRequest: [app.authenticate] }, async (request, reply) => {
-  try {
-    const body = request.body as any;
+    try {
+        const body = request.body as any;
 
-    if (!body.code || !body.name) {
-      return reply.status(400).send({ message: "Code and name are required" });
+        if (!body.code || !body.name) {
+            return reply.status(400).send({ message: "Code and name are required" });
+        }
+
+        // Check duplicate code
+        const existing = await db.select().from(s.courses).where(eq(s.courses.code, body.code));
+
+        if (existing.length) {
+            return reply.status(400).send({ message: "Course code already exists" });
+        }
+
+        const newCourse = await db
+            .insert(s.courses)
+            .values({
+                code: body.code,
+                name: body.name,
+                description: body.description,
+            })
+            .returning();
+
+        return reply.status(201).send(newCourse[0]);
+    } catch (err) {
+        return reply.status(500).send({ message: "Failed to create course" });
     }
-
-    // Check duplicate code
-    const existing = await db
-      .select()
-      .from(s.courses)
-      .where(eq(s.courses.code, body.code));
-
-    if (existing.length) {
-      return reply.status(400).send({ message: "Course code already exists" });
-    }
-
-    const newCourse = await db
-      .insert(s.courses)
-      .values({
-        code: body.code,
-        name: body.name,
-        description: body.description,
-      })
-      .returning();
-
-    return reply.status(201).send(newCourse[0]);
-  } catch (err) {
-    return reply.status(500).send({ message: "Failed to create course" });
-  }
 });
 
 app.patch("/api/courses/:id", { onRequest: [app.authenticate] }, async (request, reply) => {
-  try {
-    const { id } = request.params as { id: string };
-    const body = request.body as any;
+    try {
+        const { id } = request.params as { id: string };
+        const body = request.body as any;
 
-    // Prevent duplicate code
-    const existing = await db
-      .select()
-      .from(s.courses)
-      .where(eq(s.courses.code, body.code));
+        // Prevent duplicate code
+        const existing = await db.select().from(s.courses).where(eq(s.courses.code, body.code));
 
-    if (existing.length && existing[0].id !== id) {
-      return reply.status(400).send({ message: "Course code already exists" });
+        if (existing.length && existing[0].id !== id) {
+            return reply.status(400).send({ message: "Course code already exists" });
+        }
+
+        const updated = await db
+            .update(s.courses)
+            .set({
+                code: body.code,
+                name: body.name,
+                description: body.description,
+            })
+            .where(eq(s.courses.id, id))
+            .returning();
+
+        if (!updated.length) {
+            return reply.status(404).send({ message: "Course not found" });
+        }
+
+        return updated[0];
+    } catch {
+        return reply.status(500).send({ message: "Failed to update course" });
     }
-
-    const updated = await db
-      .update(s.courses)
-      .set({
-        code: body.code,
-        name: body.name,
-        description: body.description,
-      })
-      .where(eq(s.courses.id, id))
-      .returning();
-
-    if (!updated.length) {
-      return reply.status(404).send({ message: "Course not found" });
-    }
-
-    return updated[0];
-  } catch {
-    return reply.status(500).send({ message: "Failed to update course" });
-  }
 });
 
 app.delete("/api/courses/:id", { onRequest: [app.authenticate] }, async (request, reply) => {
-  try {
-    const { id } = request.params as { id: string };
+    try {
+        const { id } = request.params as { id: string };
 
-    await db.delete(s.courses).where(eq(s.courses.id, id));
+        await db.delete(s.courses).where(eq(s.courses.id, id));
 
-    return { message: "Course deleted" };
-  } catch {
-    return reply.status(500).send({ message: "Failed to delete course" });
-  }
+        return { message: "Course deleted" };
+    } catch {
+        return reply.status(500).send({ message: "Failed to delete course" });
+    }
 });
 
 app.delete("/api/courses", { onRequest: [app.authenticate] }, async (request, reply) => {
-  try {
-    const { ids } = request.body as { ids: string[] };
+    try {
+        const { ids } = request.body as { ids: string[] };
 
-    if (!ids?.length) {
-      return reply.status(400).send({ message: "No IDs provided" });
+        if (!ids?.length) {
+            return reply.status(400).send({ message: "No IDs provided" });
+        }
+
+        await db.delete(s.courses).where(inArray(s.courses.id, ids));
+
+        return { message: "Courses deleted" };
+    } catch {
+        return reply.status(500).send({ message: "Failed to delete courses" });
     }
+});
 
-    await db.delete(s.courses).where(inArray(s.courses.id, ids));
+// SUBJECTS
+app.get("/api/subjects", { onRequest: [app.authenticate] }, async (req) => {
+    const { search } = req.query as { search?: string };
 
-    return { message: "Courses deleted" };
-  } catch {
-    return reply.status(500).send({ message: "Failed to delete courses" });
-  }
+    return db
+        .select()
+        .from(s.subjects)
+        .where(search ? ilike(s.subjects.title, `%${search}%`) : undefined);
+});
+
+app.post("/api/subjects", { onRequest: [app.authenticate] }, async (request, reply) => {
+    try {
+        const body = request.body as any;
+        if (!body.code || !body.title || body.units === undefined) {
+            return reply.status(400).send({ message: "Code, title, and units are required" });
+        }
+
+        const newSubject = await db
+            .insert(s.subjects)
+            .values({
+                code: body.code,
+                title: body.title,
+                units: Number(body.units),
+                courseId: "4d68eef9-2ace-4340-a1a1-f08ce65603f9", // ! Note: Hardcoded Course ID for now
+            })
+            .returning();
+
+        return reply.status(201).send(newSubject[0]);
+    } catch (err) {
+        return reply.status(500).send({ message: "Failed to create subject" });
+    }
+});
+
+app.patch("/api/subjects/:id", { onRequest: [app.authenticate] }, async (request, reply) => {
+    try {
+        const { id } = request.params as { id: string };
+        const body = request.body as any;
+
+        const updated = await db
+            .update(s.subjects)
+            .set({
+                code: body.code,
+                title: body.title,
+                units: Number(body.units),
+            })
+            .where(eq(s.subjects.id, id))
+            .returning();
+
+        if (!updated.length) return reply.status(404).send({ message: "Subject not found" });
+        return updated[0];
+    } catch {
+        return reply.status(500).send({ message: "Failed to update subject" });
+    }
+});
+
+app.delete("/api/subjects/:id", { onRequest: [app.authenticate] }, async (request, reply) => {
+    try {
+        const { id } = request.params as { id: string };
+        await db.delete(s.subjects).where(eq(s.subjects.id, id));
+        return { message: "Subject deleted" };
+    } catch {
+        return reply.status(500).send({ message: "Failed to delete subject" });
+    }
+});
+
+app.delete("/api/subjects", { onRequest: [app.authenticate] }, async (request, reply) => {
+    try {
+        const { ids } = request.body as { ids: string[] };
+        if (!ids?.length) return reply.status(400).send({ message: "No IDs provided" });
+        await db.delete(s.subjects).where(inArray(s.subjects.id, ids));
+        return { message: "Subjects deleted" };
+    } catch {
+        return reply.status(500).send({ message: "Failed to delete subjects" });
+    }
 });

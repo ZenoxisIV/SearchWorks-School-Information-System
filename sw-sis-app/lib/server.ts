@@ -561,3 +561,151 @@ app.patch("/api/grades/:id", { onRequest: [app.authenticate] }, async (request, 
     if (!updated.length) return reply.status(404).send({ message: "Grade record not found" });
     return updated[0];
 });
+
+app.get("/api/students/:id/profile", async (request) => {
+    const { id } = request.params as { id: string };
+
+    const [result] = await db
+        .select({
+            id: s.students.id,
+            studentNo: s.students.studentNo,
+            firstName: s.students.firstName,
+            lastName: s.students.lastName,
+            email: s.students.email,
+            birthDate: s.students.birthDate,
+            courseId: s.students.courseId,
+            courseName: s.courses.name,
+        })
+        .from(s.students)
+        .innerJoin(s.courses, eq(s.students.courseId, s.courses.id))
+        .where(eq(s.students.id, id));
+
+    if (!result) return { student: null, reservations: [], grades: [] };
+
+    const reservations = await db
+        .select({
+            id: s.subjectReservations.id,
+            subjectId: s.subjects.id,
+            code: s.subjects.code,
+            title: s.subjects.title,
+        })
+        .from(s.subjectReservations)
+        .innerJoin(s.subjects, eq(s.subjectReservations.subjectId, s.subjects.id))
+        .where(eq(s.subjectReservations.studentId, id));
+
+    const grades = await db
+        .select({
+            id: s.grades.id,
+            subjectId: s.subjects.id,
+            subjectCode: s.subjects.code,
+
+            prelim: s.grades.prelim,
+            midterm: s.grades.midterm,
+            finals: s.grades.finals,
+            finalGrade: s.grades.finalGrade,
+
+            remarks: s.grades.remarks,
+        })
+        .from(s.grades)
+        .innerJoin(s.subjects, eq(s.grades.subjectId, s.subjects.id))
+        .where(eq(s.grades.studentId, id));
+
+    return {
+        student: result,
+        reservations,
+        grades,
+    };
+});
+
+app.get("/api/courses/:id/subjects", { onRequest: [app.authenticate] }, async (req) => {
+    const { id } = req.params as { id: string };
+
+    const subjects = await db
+        .select({
+            id: s.subjects.id,
+            code: s.subjects.code,
+            title: s.subjects.title,
+        })
+        .from(s.subjects)
+        .where(eq(s.subjects.courseId, id));
+
+    const subjectsWithPrereqs = await Promise.all(
+        subjects.map(async (sub) => {
+            const prereqs = await db
+                .select({
+                    prerequisiteSubjectId: s.subjects.id,
+                    prerequisiteCode: s.subjects.code,
+                })
+                .from(s.subjectPrerequisites)
+                .innerJoin(s.subjects, eq(s.subjectPrerequisites.prerequisiteSubjectId, s.subjects.id))
+                .where(eq(s.subjectPrerequisites.subjectId, sub.id));
+
+            return {
+                ...sub,
+                prerequisites: prereqs,
+            };
+        }),
+    );
+
+    return subjectsWithPrereqs;
+});
+
+app.post("/api/students/:id/reservations", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { subjectId } = request.body as { subjectId: string };
+
+    const [student] = await db.select().from(s.students).where(eq(s.students.id, id));
+    const [subject] = await db.select().from(s.subjects).where(eq(s.subjects.id, subjectId));
+
+    if (!student || !subject) {
+        return reply.status(404).send({ message: "Student or subject not found" });
+    }
+
+    if (student.courseId !== subject.courseId) {
+        return reply.status(400).send({ message: "Subject doesn't match student's course." });
+    }
+
+    const prereqs = await db
+        .select({ id: s.subjects.id, code: s.subjects.code })
+        .from(s.subjectPrerequisites)
+        .innerJoin(s.subjects, eq(s.subjectPrerequisites.prerequisiteSubjectId, s.subjects.id))
+        .where(eq(s.subjectPrerequisites.subjectId, subjectId));
+
+    if (prereqs.length > 0) {
+        const passed = await db
+            .select()
+            .from(s.grades)
+            .where(and(eq(s.grades.studentId, id), eq(s.grades.remarks, "PASSED")));
+
+        const passedIds = new Set(passed.map((p) => p.subjectId));
+        const missing = prereqs.filter((p) => !passedIds.has(p.id));
+
+        if (missing.length > 0) {
+            return reply.status(400).send({
+                message: `Missing prerequisites: [${missing.map((m) => m.code).join(", ")}]`,
+            });
+        }
+    }
+
+    try {
+        await db.insert(s.subjectReservations).values({ studentId: id, subjectId });
+        return { success: true };
+    } catch {
+        return reply.status(400).send({ message: "Already reserved." });
+    }
+});
+
+app.delete("/api/students/:id/reservations/:reservationId", async (request, reply) => {
+    const { id, reservationId } = request.params as { id: string; reservationId: string };
+
+    const deleted = await db
+        .delete(s.subjectReservations)
+        .where(and(eq(s.subjectReservations.id, reservationId), eq(s.subjectReservations.studentId, id)))
+        .returning();
+
+    if (!deleted.length) {
+        return reply.status(404).send({ message: "Reservation not found" });
+    }
+
+    return { success: true };
+});

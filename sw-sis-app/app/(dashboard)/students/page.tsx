@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Check, X, Trash2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Check, X, Trash2, UserRoundPen } from "lucide-react";
 
 export default function StudentsPage() {
     const [students, setStudents] = useState<any[]>([]);
@@ -379,6 +379,14 @@ export default function StudentsPage() {
                                                 </>
                                             ) : (
                                                 <>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="outline"
+                                                        title="View Student Profile"
+                                                        onClick={() => window.open(`/students/${student.id}`, "_self")}
+                                                    >
+                                                        <UserRoundPen className="h-4 w-4" />
+                                                    </Button>
                                                     <Button
                                                         size="icon"
                                                         variant="secondary"

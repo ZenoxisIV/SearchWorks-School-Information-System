@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, date, timestamp, integer, numeric, pgEnum, unique, check } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, date, timestamp, integer, numeric, pgEnum, unique, check, jsonb } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const reservationStatusEnum = pgEnum("status", ["reserved", "cancelled"]);
@@ -111,3 +111,15 @@ export const subjectPrerequisites = pgTable(
         check("self_ref_check", sql`${t.subjectId} <> ${t.prerequisiteSubjectId}`),
     ],
 );
+
+export const auditLogs = pgTable("audit_logs", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+        .references(() => users.id)
+        .notNull(),
+    action: text("action").notNull(), // "CREATE", "UPDATE"
+    entityType: text("entity_type").notNull(), // "grade"
+    entityId: uuid("entity_id").notNull(), // the grade id
+    changes: jsonb("changes").notNull(), // { field: { old: value, new: value }, ... }
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+});

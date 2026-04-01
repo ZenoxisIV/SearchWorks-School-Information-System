@@ -21,8 +21,12 @@ export async function coursesRoutes(app: FastifyInstance) {
         return reply.status(400).send({ message: "Code and name are required" });
       }
 
-      // Check duplicate code
-      const existing = await db.select().from(s.courses).where(eq(s.courses.code, body.code));
+      // Check duplicate code - optimized with LIMIT 1
+      const existing = await db
+        .select({ id: s.courses.id })
+        .from(s.courses)
+        .where(eq(s.courses.code, body.code))
+        .limit(1);
 
       if (existing.length) {
         return reply.status(400).send({ message: "Course code already exists" });
@@ -48,8 +52,12 @@ export async function coursesRoutes(app: FastifyInstance) {
       const { id } = request.params as { id: string };
       const body = request.body as any;
 
-      // Prevent duplicate code
-      const existing = await db.select().from(s.courses).where(eq(s.courses.code, body.code));
+      // Prevent duplicate code - optimized with LIMIT 1
+      const existing = await db
+        .select({ id: s.courses.id })
+        .from(s.courses)
+        .where(eq(s.courses.code, body.code))
+        .limit(1);
 
       if (existing.length && existing[0].id !== id) {
         return reply.status(400).send({ message: "Course code already exists" });
@@ -108,6 +116,7 @@ export async function coursesRoutes(app: FastifyInstance) {
   app.get("/api/courses/:id/subjects", { onRequest: [app.authenticate] }, async (req) => {
     const { id } = req.params as { id: string };
 
+    // Fetch all subjects with their prerequisites in 2 optimized queries instead of N+1
     const subjects = await db
       .select({
         id: s.subjects.id,
@@ -117,24 +126,35 @@ export async function coursesRoutes(app: FastifyInstance) {
       .from(s.subjects)
       .where(eq(s.subjects.courseId, id));
 
-    const subjectsWithPrereqs = await Promise.all(
-      subjects.map(async (sub) => {
-        const prereqs = await db
-          .select({
-            prerequisiteSubjectId: s.subjects.id,
-            prerequisiteCode: s.subjects.code,
-          })
-          .from(s.subjectPrerequisites)
-          .innerJoin(s.subjects, eq(s.subjectPrerequisites.prerequisiteSubjectId, s.subjects.id))
-          .where(eq(s.subjectPrerequisites.subjectId, sub.id));
+    if (subjects.length === 0) return [];
 
-        return {
-          ...sub,
-          prerequisites: prereqs,
-        };
-      }),
-    );
+    // Fetch ALL prerequisites for these subjects in a single query
+    const subjectIds = subjects.map((s) => s.id);
+    const allPrereqs = await db
+      .select({
+        subjectId: s.subjectPrerequisites.subjectId,
+        prerequisiteSubjectId: s.subjectPrerequisites.prerequisiteSubjectId,
+        prerequisiteCode: s.subjects.code,
+      })
+      .from(s.subjectPrerequisites)
+      .innerJoin(s.subjects, eq(s.subjectPrerequisites.prerequisiteSubjectId, s.subjects.id))
+      .where(inArray(s.subjectPrerequisites.subjectId, subjectIds));
 
-    return subjectsWithPrereqs;
+    // Map prerequisites to subjects (in-memory grouping)
+    const prereqsBySubject = new Map<string, any[]>();
+    allPrereqs.forEach((p) => {
+      if (!prereqsBySubject.has(p.subjectId)) {
+        prereqsBySubject.set(p.subjectId, []);
+      }
+      prereqsBySubject.get(p.subjectId)!.push({
+        prerequisiteSubjectId: p.prerequisiteSubjectId,
+        prerequisiteCode: p.prerequisiteCode,
+      });
+    });
+
+    return subjects.map((sub) => ({
+      ...sub,
+      prerequisites: prereqsBySubject.get(sub.id) || [],
+    }));
   });
 }

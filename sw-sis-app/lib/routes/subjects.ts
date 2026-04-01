@@ -2,17 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { ilike, eq, inArray, and } from "drizzle-orm";
-
-// --- CIRCULAR PREREQUISITE CHECKER ---
-async function isCircular(startId: string, targetId: string): Promise<boolean> {
-  const current = await db.select().from(s.subjectPrerequisites).where(eq(s.subjectPrerequisites.subjectId, startId));
-
-  for (const row of current) {
-    if (row.prerequisiteSubjectId === targetId) return true;
-    if (await isCircular(row.prerequisiteSubjectId, targetId)) return true;
-  }
-  return false;
-}
+import { isCircularPrerequisite } from "./utils";
 
 export async function subjectsRoutes(app: FastifyInstance) {
   app.get("/api/subjects", { onRequest: [app.authenticate] }, async (req) => {
@@ -131,7 +121,7 @@ export async function subjectsRoutes(app: FastifyInstance) {
     }
 
     // Circular Check
-    const circular = await isCircular(prerequisiteSubjectId, id);
+    const circular = await isCircularPrerequisite(prerequisiteSubjectId, id);
     if (circular) {
       return reply.status(400).send({ message: "Circular prerequisite detected!" });
     }

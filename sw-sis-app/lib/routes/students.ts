@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { ilike, eq, inArray, and, sql } from "drizzle-orm";
+import { checkPrerequisites } from "./utils";
 
 export async function studentsRoutes(app: FastifyInstance) {
   app.get("/api/students", { onRequest: [app.authenticate] }, async (req) => {
@@ -157,7 +158,7 @@ export async function studentsRoutes(app: FastifyInstance) {
     }
   });
 
-  app.get("/api/students/:id/profile", async (request) => {
+  app.get("/api/students/:id/profile", { onRequest: [app.authenticate] }, async (request) => {
     const { id } = request.params as { id: string };
 
     const [result] = await db
@@ -213,41 +214,30 @@ export async function studentsRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post("/api/students/:id/reservations", async (request, reply) => {
+  app.post("/api/students/:id/reservations", { onRequest: [app.authenticate] }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const { subjectId } = request.body as { subjectId: string };
 
-    const [student] = await db.select().from(s.students).where(eq(s.students.id, id));
-    const [subject] = await db.select().from(s.subjects).where(eq(s.subjects.id, subjectId));
+    // Optimized: select only needed columns
+    const [student, subject] = await Promise.all([
+      db.select({ id: s.students.id, courseId: s.students.courseId }).from(s.students).where(eq(s.students.id, id)).limit(1),
+      db.select({ id: s.subjects.id, courseId: s.subjects.courseId }).from(s.subjects).where(eq(s.subjects.id, subjectId)).limit(1),
+    ]);
 
-    if (!student || !subject) {
+    if (!student.length || !subject.length) {
       return reply.status(404).send({ message: "Student or subject not found" });
     }
 
-    if (student.courseId !== subject.courseId) {
+    if (student[0].courseId !== subject[0].courseId) {
       return reply.status(400).send({ message: "Subject doesn't match student's course." });
     }
 
-    const prereqs = await db
-      .select({ id: s.subjects.id, code: s.subjects.code })
-      .from(s.subjectPrerequisites)
-      .innerJoin(s.subjects, eq(s.subjectPrerequisites.prerequisiteSubjectId, s.subjects.id))
-      .where(eq(s.subjectPrerequisites.subjectId, subjectId));
-
-    if (prereqs.length > 0) {
-      const passed = await db
-        .select()
-        .from(s.grades)
-        .where(and(eq(s.grades.studentId, id), eq(s.grades.remarks, "PASSED")));
-
-      const passedIds = new Set(passed.map((p) => p.subjectId));
-      const missing = prereqs.filter((p) => !passedIds.has(p.id));
-
-      if (missing.length > 0) {
-        return reply.status(400).send({
-          message: `Missing prerequisites: [${missing.map((m) => m.code).join(", ")}]`,
-        });
-      }
+    // Check prerequisites using shared utility
+    const prereqCheck = await checkPrerequisites(id, subjectId);
+    if (!prereqCheck.valid) {
+      return reply.status(400).send({
+        message: `Missing prerequisites: [${prereqCheck.missing?.join(", ")}]`,
+      });
     }
 
     try {
@@ -258,7 +248,7 @@ export async function studentsRoutes(app: FastifyInstance) {
     }
   });
 
-  app.delete("/api/students/:id/reservations/:reservationId", async (request, reply) => {
+  app.delete("/api/students/:id/reservations/:reservationId", { onRequest: [app.authenticate] }, async (request, reply) => {
     const { id, reservationId } = request.params as { id: string; reservationId: string };
 
     const deleted = await db

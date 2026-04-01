@@ -38,7 +38,8 @@ export default function LoginPage() {
 
             const data = await res.json();
 
-            localStorage.setItem("token", data.token);
+            // Token is automatically stored in httpOnly cookie by server
+            // No need to store in localStorage
             localStorage.setItem("user", JSON.stringify(data.user));
 
             toast.success("Welcome to SearchWorks SIS");

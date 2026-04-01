@@ -8,21 +8,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Check, X, Trash2, UserRoundPen } from "lucide-react";
+import { Loader2, Plus, Pencil, Check, X, Trash2, UserRoundPen, Upload } from "lucide-react";
 
 export default function StudentsPage() {
     const [students, setStudents] = useState<any[]>([]);
+    const [courses, setCourses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     const [open, setOpen] = useState(false);
+    const [csvOpen, setCsvOpen] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
     const [formData, setFormData] = useState({
         firstName: "",
         lastName: "",
         email: "",
         birthDate: "",
+        courseId: "",
     });
+    const [csvFile, setCsvFile] = useState<File | null>(null);
 
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editData, setEditData] = useState<any>(null);
@@ -35,7 +41,7 @@ export default function StudentsPage() {
 
     const router = useRouter();
 
-    // --- Fetch Students ---
+    // --- Fetch Students & Courses ---
     const fetchStudents = async () => {
         try {
             setLoading(true);
@@ -53,8 +59,21 @@ export default function StudentsPage() {
         }
     };
 
+    const fetchCourses = async () => {
+        try {
+            const res = await fetch("/api/courses", { credentials: "include" });
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data)) setCourses(data);
+            }
+        } catch {
+            toast.error("Could not fetch courses");
+        }
+    };
+
     useEffect(() => {
         fetchStudents();
+        fetchCourses();
     }, []);
 
     // --- Inline Editing ---
@@ -94,6 +113,10 @@ export default function StudentsPage() {
     // --- Add Student ---
     const handleAddStudent = async (e: React.SubmitEvent) => {
         e.preventDefault();
+        if (!formData.courseId) {
+            toast.error("Please select a course");
+            return;
+        }
         setIsAdding(true);
         try {
             const res = await fetch("/api/students", {
@@ -105,7 +128,7 @@ export default function StudentsPage() {
             if (res.ok) {
                 toast.success("Student added successfully");
                 setOpen(false);
-                setFormData({ firstName: "", lastName: "", email: "", birthDate: "" });
+                setFormData({ firstName: "", lastName: "", email: "", birthDate: "", courseId: "" });
                 fetchStudents();
             } else {
                 const err = await res.json();
@@ -115,6 +138,66 @@ export default function StudentsPage() {
             toast.error("An error occurred");
         } finally {
             setIsAdding(false);
+        }
+    };
+
+    // --- Import Students from CSV ---
+    const handleCsvImport = async () => {
+        if (!csvFile) {
+            toast.error("Please select a CSV file");
+            return;
+        }
+
+        setIsImporting(true);
+        try {
+            const text = await csvFile.text();
+            const lines = text.trim().split("\n");
+            if (lines.length < 2) {
+                toast.error("CSV file must have header and at least one data row");
+                return;
+            }
+
+            // Parse header
+            const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+            const requiredFields = ["firstname", "lastname", "email", "courseid"];
+            if (!requiredFields.every((f) => headers.includes(f))) {
+                toast.error(`CSV must have columns: ${requiredFields.join(", ")}`);
+                return;
+            }
+
+            // Parse rows
+            const students = lines.slice(1).map((line) => {
+                const values = line.split(",").map((v) => v.trim());
+                return {
+                    firstName: values[headers.indexOf("firstname")] || "",
+                    lastName: values[headers.indexOf("lastname")] || "",
+                    email: values[headers.indexOf("email")] || "",
+                    birthDate: values[headers.indexOf("birthdate")] || null,
+                    courseId: values[headers.indexOf("courseid")] || "",
+                };
+            });
+
+            const res = await fetch("/api/students/import", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(students),
+                credentials: "include",
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                toast.success(data.message);
+                setCsvOpen(false);
+                setCsvFile(null);
+                fetchStudents();
+            } else {
+                const err = await res.json();
+                toast.error(err.message || "Failed to import students");
+            }
+        } catch (err: any) {
+            toast.error(err.message || "Error reading CSV file");
+        } finally {
+            setIsImporting(false);
         }
     };
 
@@ -197,6 +280,40 @@ export default function StudentsPage() {
                     <Button variant="destructive" onClick={handleBulkDelete} disabled={!selectedStudents.length}>
                         Delete Selected ({selectedStudents.length})
                     </Button>
+                    <Dialog open={csvOpen} onOpenChange={setCsvOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" className="gap-2">
+                                <Upload className="h-4 w-4" /> Import CSV
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Import Students from CSV</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="csvFile">CSV File</Label>
+                                    <Input
+                                        id="csvFile"
+                                        type="file"
+                                        accept=".csv"
+                                        onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                                    />
+                                    <p className="text-sm text-muted-foreground">
+                                        CSV must have columns: firstName, lastName, email, courseId, birthDate (optional)
+                                    </p>
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setCsvOpen(false)}>
+                                    Cancel
+                                </Button>
+                                <Button onClick={handleCsvImport} disabled={isImporting || !csvFile}>
+                                    {isImporting ? "Importing..." : "Import"}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                     <Dialog open={open} onOpenChange={setOpen}>
                         <DialogTrigger asChild>
                             <Button className="gap-2">
@@ -247,6 +364,21 @@ export default function StudentsPage() {
                                         onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
                                         required
                                     />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="course">Course</Label>
+                                    <Select value={formData.courseId} onValueChange={(value) => setFormData({ ...formData, courseId: value })}>
+                                        <SelectTrigger id="course">
+                                            <SelectValue placeholder="Select a course" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {courses.map((course) => (
+                                                <SelectItem key={course.id} value={course.id}>
+                                                    {course.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <DialogFooter>
                                     <Button type="submit" disabled={isAdding} className="w-full">

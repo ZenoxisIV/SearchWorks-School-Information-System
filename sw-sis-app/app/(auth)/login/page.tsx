@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, GraduationCap, ShieldCheck, Mail, Lock } from "lucide-react";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -38,12 +38,11 @@ export default function LoginPage() {
 
             const data = await res.json();
 
-            // Store JWT and user info
             localStorage.setItem("token", data.token);
             localStorage.setItem("user", JSON.stringify(data.user));
 
-            toast.success("Login successful!");
-            router.push("/students"); // Redirect to protected page
+            toast.success("Welcome to SearchWorks SIS");
+            router.push("/students");
         } catch (err) {
             console.error(err);
             toast.error("Something went wrong");
@@ -53,58 +52,88 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex min-h-screen w-full items-center justify-center bg-slate-50 px-4">
-            <Card className="w-full max-w-md shadow-lg">
-                <CardHeader className="space-y-1 text-center">
-                    <CardTitle className="text-2xl font-bold">Login</CardTitle>
-                    <CardDescription>Enter your credentials to access the portal</CardDescription>
-                </CardHeader>
-
-                <form onSubmit={handleLogin}>
-                    <CardContent className="grid gap-6">
-                        {/* Email */}
-                        <div className="grid gap-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                placeholder="admin@academy.edu"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                            />
+        <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-slate-100 via-white to-slate-200 px-4 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+            <Card className="w-full max-w-md shadow-xl border border-slate-200 dark:border-slate-800">
+                {/* HEADER */}
+                <CardHeader className="space-y-5 text-center">
+                    <div className="flex flex-col items-center gap-1">
+                        <div className="flex items-center justify-center rounded-2xl bg-primary/10 p-3">
+                            <GraduationCap className="h-8 w-8 text-primary" />
                         </div>
 
-                        {/* Password */}
+                        <CardTitle className="text-xl font-semibold tracking-tight">SearchWorks</CardTitle>
+
+                        <p className="text-sm text-muted-foreground">School Information System</p>
+                    </div>
+
+                    <CardDescription className="text-sm">Sign in to access your academic dashboard</CardDescription>
+                </CardHeader>
+
+                {/* FORM */}
+                <form onSubmit={handleLogin}>
+                    <CardContent className="grid gap-6 px-6">
+                        {/* EMAIL */}
+                        <div className="grid gap-2">
+                            <Label htmlFor="email">Institutional Email</Label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    placeholder="faculty@searchworks.edu"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                    className="pl-10 h-11"
+                                />
+                            </div>
+                        </div>
+
+                        {/* PASSWORD */}
                         <div className="grid gap-2">
                             <Label htmlFor="password">Password</Label>
                             <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                 <Input
                                     id="password"
                                     type={showPassword ? "text" : "password"}
-                                    placeholder="********"
+                                    placeholder="Enter your password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
-                                    className="pr-10"
+                                    className="pl-10 pr-10 h-11"
                                 />
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
                                     onClick={() => setShowPassword((prev) => !prev)}
                                 >
-                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                 </Button>
                             </div>
                         </div>
+
+                        {/* NOTICE */}
+                        <div className="mt-1 flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground leading-relaxed">
+                            <ShieldCheck className="h-4 w-4 mt-0.5" />
+                            <p>
+                                This system is restricted to authorized students, faculty, and administrators. All
+                                activities are logged and monitored.
+                            </p>
+                        </div>
                     </CardContent>
 
-                    <CardFooter className="pt-4">
-                        <Button type="submit" className="w-full" disabled={loading}>
-                            {loading ? "Authenticating..." : "Login"}
+                    {/* FOOTER */}
+                    <CardFooter className="flex flex-col gap-3 px-6 pb-6">
+                        <Button type="submit" className="w-full mt-4" disabled={loading}>
+                            {loading ? "Authenticating..." : "Sign In"}
                         </Button>
+
+                        <p className="text-xs text-muted-foreground text-center mt-2">
+                            © {new Date().getFullYear()} SearchWorks SIS • All rights reserved
+                        </p>
                     </CardFooter>
                 </form>
             </Card>

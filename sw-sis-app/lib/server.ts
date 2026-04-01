@@ -3,9 +3,20 @@ import jwt from "@fastify/jwt";
 import cookie from "@fastify/cookie";
 import { registerRoutes } from "./routes";
 
+declare module "@fastify/jwt" {
+    interface FastifyJWT {
+        user: { id: string; email: string; role: string };
+    }
+}
+
+export interface AuthenticatedRequest extends FastifyRequest {
+    user: { id: string; email: string; role: string };
+}
+
 declare module "fastify" {
     export interface FastifyInstance {
         authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+        requireRole: (role: string) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     }
 }
 
@@ -49,6 +60,19 @@ app.decorate("authenticate", async (request: FastifyRequest, reply: FastifyReply
         if (NODE_ENV === "production") {
             app.log.warn({ path: request.url, method: request.method }, "Unauthorized access attempt");
         }
+        return reply.status(401).send({ message: "Session expired or invalid" });
+    }
+});
+
+// Role-based access control decorator
+app.decorate("requireRole", (role: string) => async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+        await request.jwtVerify();
+        const user = request.user as { id: string; email: string; role: string };
+        if (user?.role !== role && user?.role !== "admin") {
+            return reply.status(403).send({ message: `Access denied. Required role: ${role}` });
+        }
+    } catch (err) {
         return reply.status(401).send({ message: "Session expired or invalid" });
     }
 });

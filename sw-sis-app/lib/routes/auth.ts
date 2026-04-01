@@ -18,7 +18,7 @@ export async function authRoutes(app: FastifyInstance) {
     try {
       // Optimized: select only needed columns and use LIMIT 1
       const users = await db
-        .select({ id: s.users.id, email: s.users.email, passwordHash: s.users.passwordHash })
+        .select({ id: s.users.id, email: s.users.email, passwordHash: s.users.passwordHash, role: s.users.role })
         .from(s.users)
         .where(eq(s.users.email, email))
         .limit(1);
@@ -32,8 +32,8 @@ export async function authRoutes(app: FastifyInstance) {
         return reply.status(401).send({ message: "Invalid credentials" });
       }
 
-      // Sign JWT with user ID and email
-      const token = app.jwt.sign({ id: users[0].id, email: users[0].email });
+      // Sign JWT with user ID, email, and role
+      const token = app.jwt.sign({ id: users[0].id, email: users[0].email, role: users[0].role });
 
       // Set secure httpOnly cookie
       return reply
@@ -44,7 +44,7 @@ export async function authRoutes(app: FastifyInstance) {
           sameSite: "lax", // CSRF protection
           maxAge: 86400, // 1 day in seconds
         })
-        .send({ message: "Login successful", user: { id: users[0].id, email: users[0].email } });
+        .send({ message: "Login successful", user: { id: users[0].id, email: users[0].email, role: users[0].role } });
     } catch (err) {
       app.log.error(err);
       return reply.status(500).send({ message: "Server error during login" });
@@ -73,7 +73,7 @@ export async function authRoutes(app: FastifyInstance) {
   app.get("/api/auth/me", { onRequest: [app.authenticate] }, async (request) => {
     const user = request.user as any;
     const userRecord = await db
-      .select({ id: s.users.id, email: s.users.email })
+      .select({ id: s.users.id, email: s.users.email, role: s.users.role })
       .from(s.users)
       .where(eq(s.users.id, user.id))
       .limit(1);

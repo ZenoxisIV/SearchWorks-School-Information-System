@@ -140,3 +140,23 @@ export const gradeSchema = z.object({
 });
 
 export type GradeFormData = z.infer<typeof gradeSchema>;
+
+/**
+ * User (Admin/Encoder) Form Validation Schema
+ */
+export const userSchema = z.object({
+  email: z
+    .string()
+    .min(1, { message: "Email is required" })
+    .email({ message: "Please enter a valid email address" }),
+  password: z
+    .string()
+    .min(1, { message: "Password is required" })
+    .min(6, { message: "Password must be at least 6 characters" })
+    .max(50, { message: "Password must be at most 50 characters" }),
+  role: z.enum(["admin", "encoder"]).refine((val) => ["admin", "encoder"].includes(val), {
+    message: "Role must be either admin or encoder",
+  }),
+});
+
+export type UserFormData = z.infer<typeof userSchema>;

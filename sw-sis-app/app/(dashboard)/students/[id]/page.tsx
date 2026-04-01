@@ -7,7 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, BookOpen, CheckCircle2, AlertCircle, Trash2, Plus } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle2, AlertCircle, Trash2, Plus, AlertTriangle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 export default function StudentProfilePage() {
     const { id } = useParams();
@@ -17,6 +18,10 @@ export default function StudentProfilePage() {
     const [profileData, setProfileData] = useState<any>(null);
     const [allCourseSubjects, setAllCourseSubjects] = useState<any[]>([]);
     const [submitting, setSubmitting] = useState<string | null>(null);
+
+    // Modal states
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
     const fetchProfile = useCallback(async () => {
         try {
@@ -66,9 +71,18 @@ export default function StudentProfilePage() {
         }
     };
 
-    const handleDeleteReservation = async (reservationId: string) => {
+    // Open modal for deletion
+    const confirmDelete = (reservationId: string) => {
+        setDeleteTargetId(reservationId);
+        setDeleteModalOpen(true);
+    };
+
+    // Delete reservation when confirmed
+    const handleDeleteConfirmed = async () => {
+        if (!deleteTargetId) return;
+
         try {
-            const res = await fetch(`/api/students/${id}/reservations/${reservationId}`, {
+            const res = await fetch(`/api/students/${id}/reservations/${deleteTargetId}`, {
                 method: "DELETE",
             });
 
@@ -78,6 +92,9 @@ export default function StudentProfilePage() {
             fetchProfile();
         } catch (err: any) {
             toast.error(err.message);
+        } finally {
+            setDeleteModalOpen(false);
+            setDeleteTargetId(null);
         }
     };
 
@@ -86,7 +103,6 @@ export default function StudentProfilePage() {
         const reservations = profileData?.reservations || [];
 
         const passedSubjectIds = grades.filter((g: any) => g.remarks === "PASSED").map((g: any) => g.subjectId);
-
         const isAlreadyReserved = reservations.some((r: any) => r.subjectId === subject.id);
         const isAlreadyPassed = passedSubjectIds.includes(subject.id);
 
@@ -113,14 +129,8 @@ export default function StudentProfilePage() {
 
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-6">
-            <Button
-                variant="ghost"
-                onClick={() => {
-                    router.push("/students");
-                }}
-                className="mb-4"
-            >
-                <ArrowLeft className="h-4 w-4 mr-2" /> Back
+            <Button variant="ghost" onClick={() => router.push("/students")} className="mb-4 text-base px-4 py-2">
+                <ArrowLeft className="h-5 w-5 mr-2" /> Back
             </Button>
 
             {/* Header */}
@@ -129,11 +139,9 @@ export default function StudentProfilePage() {
                     <h1 className="text-3xl font-bold">
                         {profileData.student.firstName} {profileData.student.lastName}
                     </h1>
-
                     <p className="text-muted-foreground">
                         {profileData.student.studentNo} • {profileData.student.email}
                     </p>
-
                     <p className="text-muted-foreground text-sm">
                         Birthday:{" "}
                         {profileData.student.birthDate
@@ -145,7 +153,6 @@ export default function StudentProfilePage() {
                             : "N/A"}
                     </p>
                 </div>
-
                 <div className="text-right">
                     <Badge variant="outline" className="text-sm px-3 py-1">
                         {profileData.student.courseName || "No Course Assigned"}
@@ -158,15 +165,14 @@ export default function StudentProfilePage() {
                 <div className="lg:col-span-1 space-y-6">
                     <Card>
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <BookOpen className="h-5 w-5" /> Grades
-                            </CardTitle>
+                            <CardTitle>Grades</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Subject</TableHead>
+                                        <TableHead>Subject Code</TableHead>
+                                        <TableHead>Subject Name</TableHead>
                                         <TableHead>Prelim</TableHead>
                                         <TableHead>Midterm</TableHead>
                                         <TableHead>Finals</TableHead>
@@ -174,11 +180,10 @@ export default function StudentProfilePage() {
                                         <TableHead className="text-right">Remarks</TableHead>
                                     </TableRow>
                                 </TableHeader>
-
                                 <TableBody>
                                     {profileData.grades.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center text-muted-foreground py-4">
+                                            <TableCell colSpan={7} className="text-center text-muted-foreground py-4">
                                                 No grades recorded
                                             </TableCell>
                                         </TableRow>
@@ -186,10 +191,15 @@ export default function StudentProfilePage() {
                                         profileData.grades.map((g: any) => (
                                             <TableRow key={g.id}>
                                                 <TableCell className="font-medium text-sm">{g.subjectCode}</TableCell>
-                                                <TableCell>{g.prelim ?? "-"}</TableCell>
-                                                <TableCell>{g.midterm ?? "-"}</TableCell>
-                                                <TableCell>{g.finals ?? "-"}</TableCell>
-                                                <TableCell>{g.finalGrade ?? "-"}</TableCell>
+                                                <TableCell className="text-sm font-medium">
+                                                    {g.subjectTitle ?? "-"}
+                                                </TableCell>
+                                                <TableCell>{g.prelim ? Number(g.prelim).toFixed(2) : "-"}</TableCell>
+                                                <TableCell>{g.midterm ? Number(g.midterm).toFixed(2) : "-"}</TableCell>
+                                                <TableCell>{g.finals ? Number(g.finals).toFixed(2) : "-"}</TableCell>
+                                                <TableCell>
+                                                    {g.finalGrade ? Number(g.finalGrade).toFixed(2) : "-"}
+                                                </TableCell>
                                                 <TableCell className="text-right">
                                                     <Badge variant={g.remarks === "PASSED" ? "default" : "destructive"}>
                                                         {g.remarks}
@@ -208,14 +218,14 @@ export default function StudentProfilePage() {
                 <div className="lg:col-span-2 space-y-6">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Subject Reservation Control</CardTitle>
+                            <CardTitle>Reservations</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Code</TableHead>
-                                        <TableHead>Title</TableHead>
+                                        <TableHead>Subject Code</TableHead>
+                                        <TableHead>Subject Name</TableHead>
                                         <TableHead>Status / Prereqs</TableHead>
                                         <TableHead className="text-right">Action</TableHead>
                                     </TableRow>
@@ -232,7 +242,6 @@ export default function StudentProfilePage() {
                                         allCourseSubjects.map((sub) => {
                                             const { isEligible, missing, isAlreadyReserved, isAlreadyPassed } =
                                                 getEligibility(sub);
-
                                             const reservation = profileData.reservations.find(
                                                 (r: any) => r.subjectId === sub.id,
                                             );
@@ -244,7 +253,7 @@ export default function StudentProfilePage() {
 
                                                     <TableCell>
                                                         {isAlreadyPassed ? (
-                                                            <span className="flex items-center text-green-600 text-xs gap-1">
+                                                            <span className="flex items-center text-green-600 text-xs gap-1 font-semibold">
                                                                 <CheckCircle2 className="h-3 w-3" /> Passed
                                                             </span>
                                                         ) : isAlreadyReserved ? (
@@ -252,7 +261,7 @@ export default function StudentProfilePage() {
                                                                 <CheckCircle2 className="h-3 w-3" /> Reserved
                                                             </span>
                                                         ) : isEligible ? (
-                                                            <span className="text-green-500 text-xs font-semibold">
+                                                            <span className="text-xs font-semibold text-gray-700">
                                                                 Eligible
                                                             </span>
                                                         ) : (
@@ -276,7 +285,7 @@ export default function StudentProfilePage() {
                                                                 variant="ghost"
                                                                 size="icon"
                                                                 className="text-destructive"
-                                                                onClick={() => handleDeleteReservation(reservation.id)}
+                                                                onClick={() => confirmDelete(reservation.id)}
                                                             >
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
@@ -306,6 +315,27 @@ export default function StudentProfilePage() {
                     </Card>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader className="flex flex-col items-center gap-2">
+                        <AlertTriangle className="h-10 w-10 text-destructive" />
+                        <DialogTitle>Confirm Delete</DialogTitle>
+                    </DialogHeader>
+                    <p className="py-4 text-center">
+                        Are you sure you want to delete this reservation? This action cannot be undone.
+                    </p>
+                    <DialogFooter className="flex justify-center gap-4">
+                        <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={handleDeleteConfirmed}>
+                            Delete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

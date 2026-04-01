@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Save, Search } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 
 export default function GradingSheetPage() {
     const [grades, setGrades] = useState<any[]>([]);
@@ -24,9 +24,9 @@ export default function GradingSheetPage() {
     const [formData, setFormData] = useState({
         studentId: "",
         subjectId: "",
-        prelim: "1.0",
-        midterm: "1.0",
-        finals: "1.0",
+        prelim: "1.00",
+        midterm: "1.00",
+        finals: "1.00",
     });
 
     const fetchData = async () => {
@@ -56,7 +56,6 @@ export default function GradingSheetPage() {
 
     const handleSave = async (e: React.SubmitEvent) => {
         e.preventDefault();
-
         const selectedStudent = students.find((s) => s.id === formData.studentId);
         if (!selectedStudent) {
             toast.error("Select a student");
@@ -91,9 +90,9 @@ export default function GradingSheetPage() {
 
             setFormData((prev) => ({
                 ...prev,
-                prelim: "1.0",
-                midterm: "1.0",
-                finals: "1.0",
+                prelim: "1.00",
+                midterm: "1.00",
+                finals: "1.00",
             }));
         } catch {
             toast.error("Save failed");
@@ -102,11 +101,7 @@ export default function GradingSheetPage() {
         }
     };
 
-    const courseOptions = courses.map((c) => ({
-        id: c.id,
-        code: c.code,
-        name: c.name,
-    }));
+    const courseOptions = courses.map((c) => ({ id: c.id, code: c.code, name: c.name }));
 
     const filteredGrades = grades.filter((g) => {
         const matchesSearch =
@@ -119,24 +114,22 @@ export default function GradingSheetPage() {
 
     return (
         <div className="p-6 space-y-6 w-full">
+            {/* HEADER + FILTERS */}
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <h2 className="text-3xl font-bold">Grading Sheet</h2>
 
-                <div className="flex flex-wrap gap-3 w-full lg:w-auto">
+                <div className="flex flex-wrap gap-3 w-full lg:w-auto items-center">
                     {/* SEARCH */}
-                    <div className="relative w-full lg:w-64">
-                        <Search className="absolute left-3 top-2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search..."
-                            className="pl-8"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
+                    <Input
+                        placeholder="Search..."
+                        className="w-full lg:w-64 p-2 text-sm"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
 
                     {/* COURSE FILTER */}
                     <select
-                        className="border rounded-md px-3 py-2 text-sm bg-background"
+                        className="w-full lg:w-48 p-2 border rounded-md text-sm bg-background"
                         value={selectedCourse}
                         onChange={(e) => setSelectedCourse(e.target.value)}
                     >
@@ -150,7 +143,7 @@ export default function GradingSheetPage() {
 
                     {/* SUBJECT FILTER */}
                     <select
-                        className="border rounded-md px-3 py-2 text-sm bg-background"
+                        className="w-full lg:w-64 p-2 border rounded-md text-sm bg-background"
                         value={selectedSubject}
                         onChange={(e) => setSelectedSubject(e.target.value)}
                     >
@@ -164,7 +157,7 @@ export default function GradingSheetPage() {
                 </div>
             </div>
 
-            {/* MAIN LAYOUT */}
+            {/* MAIN LAYOUT: KEEP ORIGINAL FORM + TABLE */}
             <div className="flex gap-6 w-full">
                 {/* FORM */}
                 <Card className="w-[320px] shrink-0 h-fit">
@@ -178,15 +171,10 @@ export default function GradingSheetPage() {
                                 <select
                                     className="w-full p-2 border rounded-md bg-background text-sm"
                                     value={formData.studentId}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            studentId: e.target.value,
-                                        })
-                                    }
+                                    onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
                                     required
                                 >
-                                    <option value="">Select Student</option>
+                                    <option value="">- Select Student -</option>
                                     {students.map((s) => (
                                         <option key={s.id} value={s.id}>
                                             {s.lastName}, {s.firstName}
@@ -200,15 +188,10 @@ export default function GradingSheetPage() {
                                 <select
                                     className="w-full p-2 border rounded-md bg-background text-sm"
                                     value={formData.subjectId}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            subjectId: e.target.value,
-                                        })
-                                    }
+                                    onChange={(e) => setFormData({ ...formData, subjectId: e.target.value })}
                                     required
                                 >
-                                    <option value="">Select Subject</option>
+                                    <option value="">- Select Subject -</option>
                                     {subjects.map((s) => (
                                         <option key={s.id} value={s.id}>
                                             {s.code} - {s.title}
@@ -225,8 +208,13 @@ export default function GradingSheetPage() {
                                         step="0.25"
                                         min="1"
                                         max="5"
-                                        value={formData.prelim}
-                                        onChange={(e) => setFormData({ ...formData, prelim: e.target.value })}
+                                        value={Number(formData.prelim).toFixed(2)}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                prelim: Number(e.target.value).toFixed(2),
+                                            })
+                                        }
                                     />
                                 </div>
                                 <div>
@@ -236,8 +224,13 @@ export default function GradingSheetPage() {
                                         step="0.25"
                                         min="1"
                                         max="5"
-                                        value={formData.midterm}
-                                        onChange={(e) => setFormData({ ...formData, midterm: e.target.value })}
+                                        value={Number(formData.midterm).toFixed(2)}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                midterm: Number(e.target.value).toFixed(2),
+                                            })
+                                        }
                                     />
                                 </div>
                                 <div>
@@ -247,18 +240,24 @@ export default function GradingSheetPage() {
                                         step="0.25"
                                         min="1"
                                         max="5"
-                                        value={formData.finals}
-                                        onChange={(e) => setFormData({ ...formData, finals: e.target.value })}
+                                        value={Number(formData.finals).toFixed(2)}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                finals: Number(e.target.value).toFixed(2),
+                                            })
+                                        }
                                     />
                                 </div>
                             </div>
 
-                            <Button type="submit" className="w-full" disabled={isSaving}>
-                                {isSaving ? (
-                                    <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                                ) : (
-                                    <Save className="mr-2 h-4 w-4" />
-                                )}
+                            <Button
+                                type="submit"
+                                className="w-full flex justify-center items-center gap-2"
+                                disabled={isSaving}
+                            >
+                                {isSaving && <Loader2 className="animate-spin h-4 w-4" />}
+                                <Save className="h-4 w-4" />
                                 Save
                             </Button>
                         </form>
@@ -271,8 +270,8 @@ export default function GradingSheetPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Student</TableHead>
-                                <TableHead>Course</TableHead>
-                                <TableHead>Code</TableHead>
+                                <TableHead>Course Code</TableHead>
+                                <TableHead>Subject Code</TableHead>
                                 <TableHead>Subject</TableHead>
                                 <TableHead>P</TableHead>
                                 <TableHead>M</TableHead>
@@ -302,11 +301,21 @@ export default function GradingSheetPage() {
                                         <TableCell>{g.courseCode}</TableCell>
                                         <TableCell>{g.subjectCode}</TableCell>
                                         <TableCell>{g.subjectTitle}</TableCell>
-                                        <TableCell>{g.prelim}</TableCell>
-                                        <TableCell>{g.midterm}</TableCell>
-                                        <TableCell>{g.finals}</TableCell>
-                                        <TableCell className="text-right font-bold">{g.finalGrade}</TableCell>
-                                        <TableCell>{Number(g.finalGrade) <= 3 ? "Passed" : "Failed"}</TableCell>
+                                        <TableCell>{Number(g.prelim).toFixed(2)}</TableCell>
+                                        <TableCell>{Number(g.midterm).toFixed(2)}</TableCell>
+                                        <TableCell>{Number(g.finals).toFixed(2)}</TableCell>
+                                        <TableCell className="text-right font-bold">
+                                            {Number(g.finalGrade).toFixed(2)}
+                                        </TableCell>
+                                        <TableCell
+                                            className={
+                                                Number(g.finalGrade) <= 3
+                                                    ? "text-green-600 font-semibold"
+                                                    : "text-red-600 font-semibold"
+                                            }
+                                        >
+                                            {Number(g.finalGrade) <= 3 ? "Passed" : "Failed"}
+                                        </TableCell>
                                     </TableRow>
                                 ))
                             )}

@@ -24,15 +24,11 @@ export default function StudentsPage() {
         birthDate: "",
     });
 
-    // --- Inline Edit State ---
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editData, setEditData] = useState<any>(null);
     const [isSaving, setIsSaving] = useState(false);
 
-    // --- Bulk Delete / Selection ---
     const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-
-    // --- Search & Pagination ---
     const [search, setSearch] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
@@ -43,10 +39,7 @@ export default function StudentsPage() {
     const fetchStudents = async () => {
         try {
             setLoading(true);
-            const url = new URL("/api/students", location.origin);
-            if (search) url.searchParams.set("search", search);
-
-            const res = await fetch(url.toString(), { credentials: "include" });
+            const res = await fetch("/api/students", { credentials: "include" });
             if (res.status === 401) {
                 router.push("/login");
                 return;
@@ -62,7 +55,7 @@ export default function StudentsPage() {
 
     useEffect(() => {
         fetchStudents();
-    }, [search]);
+    }, []);
 
     // --- Inline Editing ---
     const startEdit = (student: any) => {
@@ -145,7 +138,7 @@ export default function StudentsPage() {
         }
     };
 
-    // --- Bulk Delete ---
+    // --- Bulk Delete / Selection ---
     const toggleSelect = (studentNo: string) => {
         setSelectedStudents((prev) =>
             prev.includes(studentNo) ? prev.filter((s) => s !== studentNo) : [...prev, studentNo],
@@ -176,20 +169,25 @@ export default function StudentsPage() {
         }
     };
 
-    // --- Pagination ---
-    const totalPages = Math.ceil(students.length / itemsPerPage);
-    const paginated = students.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    // --- Client-side global search filter ---
+    const filteredStudents = students.filter((student) => {
+        const values = [student.studentNo, student.firstName, student.lastName, student.email, student.birthDate];
+        return values.some((v) => v?.toString().toLowerCase().includes(search.toLowerCase()));
+    });
+
+    const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
+    const paginated = filteredStudents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     return (
         <div className="space-y-6 p-6">
             {/* Header + Add */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">Students</h2>
                     <p className="text-muted-foreground">View and manage enrolled student records.</p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <Input
                         placeholder="Search..."
                         value={search}

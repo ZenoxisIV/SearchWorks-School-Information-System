@@ -278,8 +278,8 @@ export default function CoursesPage() {
                                         }
                                     />
                                 </TableHead>
-                                <TableHead>Code</TableHead>
-                                <TableHead>Name</TableHead>
+                                <TableHead>Course Code</TableHead>
+                                <TableHead>Course Name</TableHead>
                                 <TableHead>Description</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>

@@ -6,6 +6,7 @@ import { subjectsRoutes } from "./subjects";
 import { reservationsRoutes } from "./reservations";
 import { gradesRoutes } from "./grades";
 import { usersRoutes } from "./users";
+import { auditLogsRoutes } from "./audit-logs";
 
 /**
  * Register all route modules with the Fastify app.
@@ -26,4 +27,5 @@ export async function registerRoutes(app: FastifyInstance) {
 
   // Admin routes
   await app.register(usersRoutes);
+  await app.register(auditLogsRoutes);
 }

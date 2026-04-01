@@ -2,6 +2,8 @@ import { FastifyInstance } from "fastify";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { logAudit, computeChanges } from "@/lib/audit";
+import { calculateFinalGrade } from "@/lib/grades";
 
 export async function gradesRoutes(app: FastifyInstance) {
   // --- GRADES ---
@@ -44,6 +46,24 @@ export async function gradesRoutes(app: FastifyInstance) {
     const body = request.body as any;
     const { id: userId } = (request as any).user;
 
+    // Check if grade already exists for this student/subject/course
+    const existingGrade = await db
+      .select()
+      .from(s.grades)
+      .where(
+        and(
+          eq(s.grades.studentId, body.studentId),
+          eq(s.grades.subjectId, body.subjectId),
+          eq(s.grades.courseId, body.courseId),
+        ),
+      )
+      .limit(1);
+
+    const isUpdate = existingGrade.length > 0;
+
+    // Calculate final grade using weighted average
+    const { finalGrade, remarks } = calculateFinalGrade(body.prelim, body.midterm, body.finals);
+
     const values = {
       studentId: body.studentId,
       subjectId: body.subjectId,
@@ -51,8 +71,8 @@ export async function gradesRoutes(app: FastifyInstance) {
       prelim: body.prelim,
       midterm: body.midterm,
       finals: body.finals,
-      finalGrade: body.finalGrade,
-      remarks: Number(body.finalGrade) <= 3.0 ? "PASSED" : "FAILED",
+      finalGrade,
+      remarks,
       encodedByUserId: userId,
     };
 
@@ -65,12 +85,54 @@ export async function gradesRoutes(app: FastifyInstance) {
       })
       .returning();
 
+    // Log the appropriate action
+    const gradeId = result[0].id;
+    if (isUpdate) {
+      // Log UPDATE with before/after values
+      const fieldsToTrack = ["prelim", "midterm", "finals", "finalGrade", "remarks"];
+      const changes = computeChanges(existingGrade[0], values, fieldsToTrack);
+      await logAudit({
+        userId,
+        action: "UPDATE",
+        entityType: "grade",
+        entityId: gradeId,
+        changes,
+      });
+    } else {
+      // Log CREATE with new values
+      await logAudit({
+        userId,
+        action: "CREATE",
+        entityType: "grade",
+        entityId: gradeId,
+        changes: {
+          prelim: { old: null, new: body.prelim },
+          midterm: { old: null, new: body.midterm },
+          finals: { old: null, new: body.finals },
+          finalGrade: { old: null, new: finalGrade },
+          remarks: { old: null, new: remarks },
+        },
+      });
+    }
+
     return result[0];
   });
 
   app.patch("/api/grades/:id", { onRequest: [app.authenticate] }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as any;
+    const { id: userId } = (request as any).user;
+
+    // Fetch old grade for audit log
+    const oldGrade = await db
+      .select()
+      .from(s.grades)
+      .where(eq(s.grades.id, id))
+      .limit(1);
+
+    if (!oldGrade.length) {
+      return reply.status(404).send({ message: "Grade record not found" });
+    }
 
     const updated = await db
       .update(s.grades)
@@ -78,7 +140,20 @@ export async function gradesRoutes(app: FastifyInstance) {
       .where(eq(s.grades.id, id))
       .returning();
 
-    if (!updated.length) return reply.status(404).send({ message: "Grade record not found" });
+    // Log the UPDATE operation if there were actual changes
+    const fieldsToTrack = ["prelim", "midterm", "finals", "finalGrade", "remarks"];
+    const changes = computeChanges(oldGrade[0], updated[0], fieldsToTrack);
+
+    if (Object.keys(changes).length > 0) {
+      await logAudit({
+        userId,
+        action: "UPDATE",
+        entityType: "grade",
+        entityId: id,
+        changes,
+      });
+    }
+
     return updated[0];
   });
 }

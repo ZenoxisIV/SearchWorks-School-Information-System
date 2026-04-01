@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FieldError } from "@/components/form-error";
 import { gradeSchema } from "@/lib/validations";
+import { calculateFinalGrade } from "@/lib/grades";
 import { toast } from "sonner";
 import { Loader2, Save } from "lucide-react";
 
@@ -89,9 +90,11 @@ export default function GradingSheetPage() {
 
         setIsSaving(true);
 
-        const avg = (Number(formData.prelim) + Number(formData.midterm) + Number(formData.finals)) / 3;
-        const finalGrade = avg.toFixed(2);
-        const remarks = Number(finalGrade) <= 3.0 ? "PASSED" : "FAILED";
+        const { finalGrade, remarks } = calculateFinalGrade(
+            formData.prelim,
+            formData.midterm,
+            formData.finals,
+        );
 
         try {
             const res = await fetch("/api/grades", {

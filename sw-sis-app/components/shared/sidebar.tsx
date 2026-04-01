@@ -38,7 +38,7 @@ const sidebarGroups: SidebarGroup[] = [
             { title: "Courses", href: "/courses", icon: BookOpen },
             { title: "Subjects", href: "/subjects", icon: Library },
             { title: "Reservations", href: "/reservations", icon: CalendarCheck },
-            { title: "Grading Sheet", href: "/grading", icon: ClipboardList },
+            { title: "Grading Sheet", href: "/grading-sheet", icon: ClipboardList },
         ],
     },
 ];

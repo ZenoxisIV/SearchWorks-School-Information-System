@@ -4,7 +4,7 @@ import cookie from "@fastify/cookie";
 import bcrypt from "bcrypt";
 import { db } from "@/db";
 import * as s from "@/db/schema";
-import { ilike, eq, inArray, and } from "drizzle-orm";
+import { ilike, eq, inArray, and, sql } from "drizzle-orm";
 
 declare module "fastify" {
     export interface FastifyInstance {
@@ -339,7 +339,7 @@ app.delete("/api/subjects/:id", { onRequest: [app.authenticate] }, async (reques
     try {
         const { id } = request.params as { id: string };
         await db.delete(s.subjects).where(eq(s.subjects.id, id));
-        return { message: "Subject deleted" };
+        return { message: "Subject deleted" }; // ! Note: might need to cascade delete related prerequisites, reservations, etc
     } catch {
         return reply.status(500).send({ message: "Failed to delete subject" });
     }
@@ -420,4 +420,82 @@ app.delete("/api/subjects/:id/prerequisites/:prereqId", { onRequest: [app.authen
             and(eq(s.subjectPrerequisites.subjectId, id), eq(s.subjectPrerequisites.prerequisiteSubjectId, prereqId)),
         );
     return { message: "Prerequisite removed" };
+});
+
+// GRADES
+app.get("/api/grades", { onRequest: [app.authenticate] }, async (request) => {
+    const { courseId, subjectId, studentId } = request.query as {
+        courseId?: string;
+        subjectId?: string;
+        studentId?: string;
+    };
+
+    const filters = [];
+    if (courseId) filters.push(eq(s.grades.courseId, courseId));
+    if (subjectId) filters.push(eq(s.grades.subjectId, subjectId));
+    if (studentId) filters.push(eq(s.grades.studentId, studentId));
+
+    return db
+        .select({
+            id: s.grades.id,
+            studentId: s.grades.studentId,
+            studentName: sql<string>`${s.students.firstName} || ' ' || ${s.students.lastName}`,
+            courseCode: s.courses.code,
+            subjectId: s.grades.subjectId,
+            subjectCode: s.subjects.code,
+            subjectTitle: s.subjects.title,
+            courseId: s.grades.courseId,
+            prelim: s.grades.prelim,
+            midterm: s.grades.midterm,
+            finals: s.grades.finals,
+            finalGrade: s.grades.finalGrade,
+            remarks: s.grades.remarks,
+        })
+        .from(s.grades)
+        .innerJoin(s.students, eq(s.grades.studentId, s.students.id))
+        .innerJoin(s.subjects, eq(s.grades.subjectId, s.subjects.id))
+        .innerJoin(s.courses, eq(s.grades.courseId, s.courses.id))
+        .where(filters.length > 0 ? and(...filters) : undefined);
+});
+
+app.post("/api/grades", { onRequest: [app.authenticate] }, async (request, reply) => {
+    const body = request.body as any;
+    const { id: userId } = (request as any).user;
+
+    const values = {
+        studentId: body.studentId,
+        subjectId: body.subjectId,
+        courseId: body.courseId,
+        prelim: body.prelim,
+        midterm: body.midterm,
+        finals: body.finals,
+        finalGrade: body.finalGrade,
+        remarks: Number(body.finalGrade) <= 3.0 ? "PASSED" : "FAILED",
+        encodedByUserId: userId,
+    };
+
+    const result = await db
+        .insert(s.grades)
+        .values(values)
+        .onConflictDoUpdate({
+            target: [s.grades.studentId, s.grades.subjectId, s.grades.courseId],
+            set: values,
+        })
+        .returning();
+
+    return result[0];
+});
+
+app.patch("/api/grades/:id", { onRequest: [app.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+
+    const updated = await db
+        .update(s.grades)
+        .set({ ...body, updatedAt: new Date() })
+        .where(eq(s.grades.id, id))
+        .returning();
+
+    if (!updated.length) return reply.status(404).send({ message: "Grade record not found" });
+    return updated[0];
 });

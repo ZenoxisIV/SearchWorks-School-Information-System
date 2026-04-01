@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Users, BookOpen, Library, CalendarCheck, ClipboardList, Menu, LucideIcon, GitPullRequest } from "lucide-react";
+import { Users, BookOpen, Library, CalendarCheck, ClipboardList, Menu, LucideIcon, GitPullRequest, UserCog } from "lucide-react";
 
 type SidebarItem = {
     title: string;
@@ -18,7 +18,7 @@ type SidebarGroup = {
     items: SidebarItem[];
 };
 
-const sidebarGroups: SidebarGroup[] = [
+const mainGroups: SidebarGroup[] = [
     {
         title: "Main",
         items: [
@@ -31,6 +31,15 @@ const sidebarGroups: SidebarGroup[] = [
     },
 ];
 
+const adminGroups: SidebarGroup[] = [
+    {
+        title: "Admin",
+        items: [
+            { title: "Users", href: "/admin/users", icon: UserCog },
+        ],
+    },
+];
+
 interface SidebarProps {
     onMobileClose?: () => void;
 }
@@ -38,10 +47,37 @@ interface SidebarProps {
 export function Sidebar({ onMobileClose }: SidebarProps) {
     const pathname = usePathname();
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [userRole, setUserRole] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchUserRole = async () => {
+            try {
+                const res = await fetch("/api/auth/me", {
+                    credentials: "include",
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setUserRole(data.user?.role || null);
+                }
+            } catch (err) {
+                console.error("Failed to fetch user role:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUserRole();
+    }, []);
 
     const handleLinkClick = () => {
         onMobileClose?.();
     };
+
+    const sidebarGroups = [...mainGroups];
+    if (userRole === "admin") {
+        sidebarGroups.push(...adminGroups);
+    }
 
     return (
         <aside

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Users, BookOpen, Library, CalendarCheck, ClipboardList, Menu, LucideIcon, GitPullRequest, UserCog } from "lucide-react";
+import { Users, BookOpen, Library, CalendarCheck, ClipboardList, Menu, LucideIcon, GitPullRequest, UserCog, History } from "lucide-react";
 
 type SidebarItem = {
     title: string;
@@ -36,6 +36,7 @@ const adminGroups: SidebarGroup[] = [
         title: "Admin",
         items: [
             { title: "Users", href: "/admin/users", icon: UserCog },
+            { title: "Audit Logs", href: "/admin/audit-logs", icon: History },
         ],
     },
 ];

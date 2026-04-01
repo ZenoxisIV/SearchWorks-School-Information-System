@@ -1,4 +1,4 @@
-import { app } from "@/lib/fastify";
+import { app } from "@/lib/server";
 
 async function handler(req: Request) {
     const { method, url } = req;

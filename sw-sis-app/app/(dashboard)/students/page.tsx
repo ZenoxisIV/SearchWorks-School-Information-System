@@ -9,8 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { FieldError } from "@/components/form-error";
 import { toast } from "sonner";
 import { Loader2, Plus, Pencil, Check, X, Trash2, UserRoundPen, Upload } from "lucide-react";
+import { studentSchema } from "@/lib/validations";
 
 export default function StudentsPage() {
     const [students, setStudents] = useState<any[]>([]);
@@ -28,6 +32,7 @@ export default function StudentsPage() {
         birthDate: "",
         courseId: "",
     });
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [csvFile, setCsvFile] = useState<File | null>(null);
 
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -38,6 +43,9 @@ export default function StudentsPage() {
     const [search, setSearch] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<null | { type: "single" | "bulk"; id?: string }>(null);
 
     const router = useRouter();
 
@@ -113,10 +121,25 @@ export default function StudentsPage() {
     // --- Add Student ---
     const handleAddStudent = async (e: React.SubmitEvent) => {
         e.preventDefault();
+        setErrors({});
+
         if (!formData.courseId) {
             toast.error("Please select a course");
             return;
         }
+
+        // Validate with Zod schema
+        const result = studentSchema.safeParse(formData);
+        if (!result.success) {
+            const fieldErrors: Record<string, string> = {};
+            result.error.issues.forEach((issue: any) => {
+                const field = issue.path[0] as string;
+                fieldErrors[field] = issue.message;
+            });
+            setErrors(fieldErrors);
+            return;
+        }
+
         setIsAdding(true);
         try {
             const res = await fetch("/api/students", {
@@ -129,6 +152,7 @@ export default function StudentsPage() {
                 toast.success("Student added successfully");
                 setOpen(false);
                 setFormData({ firstName: "", lastName: "", email: "", birthDate: "", courseId: "" });
+                setErrors({});
                 fetchStudents();
             } else {
                 const err = await res.json();
@@ -203,21 +227,46 @@ export default function StudentsPage() {
 
     // --- Delete Student ---
     const handleDelete = async (studentNo: string) => {
-        if (!confirm("Are you sure you want to delete this student?")) return;
+        setDeleteTarget({ type: "single", id: studentNo });
+        setDeleteModalOpen(true);
+    };
+
+    const handleDeleteConfirmed = async () => {
+        if (!deleteTarget) return;
+
         try {
-            const res = await fetch(`/api/students/${studentNo}`, {
-                method: "DELETE",
-                credentials: "include",
-            });
-            if (res.ok) {
-                toast.success("Student deleted");
-                fetchStudents();
-            } else {
-                const err = await res.json();
-                toast.error(err.message || "Failed to delete student");
+            if (deleteTarget.type === "single" && deleteTarget.id) {
+                const res = await fetch(`/api/students/${deleteTarget.id}`, {
+                    method: "DELETE",
+                    credentials: "include",
+                });
+                if (res.ok) {
+                    toast.success("Student deleted");
+                } else {
+                    const err = await res.json();
+                    toast.error(err.message || "Failed to delete student");
+                }
+            } else if (deleteTarget.type === "bulk") {
+                const res = await fetch("/api/students", {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ studentNos: selectedStudents }),
+                    credentials: "include",
+                });
+                if (res.ok) {
+                    toast.success("Selected students deleted");
+                    setSelectedStudents([]);
+                } else {
+                    const err = await res.json();
+                    toast.error(err.message || "Failed to delete students");
+                }
             }
         } catch {
             toast.error("An error occurred");
+        } finally {
+            fetchStudents();
+            setDeleteModalOpen(false);
+            setDeleteTarget(null);
         }
     };
 
@@ -227,32 +276,6 @@ export default function StudentsPage() {
             prev.includes(studentNo) ? prev.filter((s) => s !== studentNo) : [...prev, studentNo],
         );
     };
-
-    const handleBulkDelete = async () => {
-        if (!selectedStudents.length) return;
-        if (!confirm(`Delete ${selectedStudents.length} selected students?`)) return;
-
-        try {
-            const res = await fetch("/api/students", {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ studentNos: selectedStudents }),
-                credentials: "include",
-            });
-            if (res.ok) {
-                toast.success("Selected students deleted");
-                setSelectedStudents([]);
-                fetchStudents();
-            } else {
-                const err = await res.json();
-                toast.error(err.message || "Failed to delete students");
-            }
-        } catch {
-            toast.error("An error occurred");
-        }
-    };
-
-    // --- Client-side global search filter ---
     const filteredStudents = students.filter((student) => {
         const values = [student.studentNo, student.firstName, student.lastName, student.email, student.birthDate];
         return values.some((v) => v?.toString().toLowerCase().includes(search.toLowerCase()));
@@ -277,7 +300,14 @@ export default function StudentsPage() {
                         onChange={(e) => setSearch(e.target.value)}
                         className="w-64"
                     />
-                    <Button variant="destructive" onClick={handleBulkDelete} disabled={!selectedStudents.length}>
+                    <Button
+                        variant="destructive"
+                        onClick={() => {
+                            setDeleteTarget({ type: "bulk" });
+                            setDeleteModalOpen(true);
+                        }}
+                        disabled={!selectedStudents.length}
+                    >
                         Delete Selected ({selectedStudents.length})
                     </Button>
                     <Dialog open={csvOpen} onOpenChange={setCsvOpen}>
@@ -300,7 +330,8 @@ export default function StudentsPage() {
                                         onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
                                     />
                                     <p className="text-sm text-muted-foreground">
-                                        CSV must have columns: firstName, lastName, email, courseId, birthDate (optional)
+                                        CSV must have columns: firstName, lastName, email, courseId, birthDate
+                                        (optional)
                                     </p>
                                 </div>
                             </div>
@@ -334,6 +365,7 @@ export default function StudentsPage() {
                                             onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                                             required
                                         />
+                                        <FieldError message={errors.firstName} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="lastName">Last Name</Label>
@@ -343,6 +375,7 @@ export default function StudentsPage() {
                                             onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                                             required
                                         />
+                                        <FieldError message={errors.lastName} />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
@@ -354,6 +387,7 @@ export default function StudentsPage() {
                                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                         required
                                     />
+                                    <FieldError message={errors.email} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="birthDate">Birth Date</Label>
@@ -362,12 +396,15 @@ export default function StudentsPage() {
                                         type="date"
                                         value={formData.birthDate}
                                         onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                                        required
                                     />
+                                    <FieldError message={errors.birthDate} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="course">Course</Label>
-                                    <Select value={formData.courseId} onValueChange={(value) => setFormData({ ...formData, courseId: value })}>
+                                    <Select
+                                        value={formData.courseId}
+                                        onValueChange={(value) => setFormData({ ...formData, courseId: value })}
+                                    >
                                         <SelectTrigger id="course">
                                             <SelectValue placeholder="Select a course" />
                                         </SelectTrigger>
@@ -379,6 +416,7 @@ export default function StudentsPage() {
                                             ))}
                                         </SelectContent>
                                     </Select>
+                                    <FieldError message={errors.courseId} />
                                 </div>
                                 <DialogFooter>
                                     <Button type="submit" disabled={isAdding} className="w-full">
@@ -398,10 +436,9 @@ export default function StudentsPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>
-                                    <input
-                                        type="checkbox"
+                                    <Checkbox
                                         checked={selectedStudents.length === students.length && students.length > 0}
-                                        onChange={() => {
+                                        onCheckedChange={() => {
                                             if (selectedStudents.length === students.length) setSelectedStudents([]);
                                             else setSelectedStudents(students.map((s) => s.studentNo));
                                         }}
@@ -422,10 +459,9 @@ export default function StudentsPage() {
                                 return (
                                     <TableRow key={student.studentNo}>
                                         <TableCell>
-                                            <input
-                                                type="checkbox"
+                                            <Checkbox
                                                 checked={selectedStudents.includes(student.studentNo)}
-                                                onChange={() => toggleSelect(student.studentNo)}
+                                                onCheckedChange={() => toggleSelect(student.studentNo)}
                                             />
                                         </TableCell>
                                         <TableCell>{student.studentNo}</TableCell>
@@ -564,6 +600,19 @@ export default function StudentsPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Delete Confirmation Modal */}
+            <DeleteConfirmDialog
+                open={deleteModalOpen}
+                onOpenChange={setDeleteModalOpen}
+                title="Delete Student"
+                description={
+                    deleteTarget?.type === "bulk"
+                        ? `Are you sure you want to delete all ${selectedStudents.length} selected students?`
+                        : "Are you sure you want to delete this student? This action cannot be undone."
+                }
+                onConfirm={handleDeleteConfirmed}
+            />
         </div>
     );
 }

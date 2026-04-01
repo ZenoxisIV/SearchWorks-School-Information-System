@@ -7,41 +7,51 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, GraduationCap, ShieldCheck, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, GraduationCap, ShieldCheck } from "lucide-react";
+import { FieldError, FormError } from "@/components/form-error";
+import { loginSchema } from "@/lib/validations";
 
 export default function LoginPage() {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const [formData, setFormData] = useState({ email: "", password: "" });
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const router = useRouter();
 
     const handleLogin = async (e: React.SubmitEvent) => {
         e.preventDefault();
+        setErrors({});
+
+        // Validate with Zod
+        const result = loginSchema.safeParse(formData);
+        if (!result.success) {
+            const fieldErrors: Record<string, string> = {};
+            result.error.issues.forEach((issue: any) => {
+                const field = issue.path[0] as string;
+                fieldErrors[field] = issue.message;
+            });
+            setErrors(fieldErrors);
+            return;
+        }
+
         setLoading(true);
 
         try {
             const res = await fetch("/api/auth/login", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ email, password }),
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formData),
+                credentials: "include",
             });
 
             if (!res.ok) {
                 const errorData = await res.json();
                 toast.error(errorData.message || "Login failed");
-                setLoading(false);
                 return;
             }
 
             const data = await res.json();
-
-            // Token is automatically stored in httpOnly cookie by server
-            // No need to store in localStorage
             localStorage.setItem("user", JSON.stringify(data.user));
-
             toast.success("Welcome to SearchWorks SIS");
             router.push("/students");
         } catch (err) {
@@ -55,54 +65,51 @@ export default function LoginPage() {
     return (
         <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-slate-100 via-white to-slate-200 px-4 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
             <Card className="w-full max-w-md shadow-xl border border-slate-200 dark:border-slate-800">
-                {/* HEADER */}
                 <CardHeader className="space-y-5 text-center">
                     <div className="flex flex-col items-center gap-1">
                         <div className="flex items-center justify-center rounded-2xl bg-primary/10 p-3">
                             <GraduationCap className="h-8 w-8 text-primary" />
                         </div>
-
                         <CardTitle className="text-xl font-semibold tracking-tight">SearchWorks</CardTitle>
-
                         <p className="text-sm text-muted-foreground">School Information System</p>
                     </div>
-
                     <CardDescription className="text-sm">Sign in to access your academic dashboard</CardDescription>
                 </CardHeader>
 
-                {/* FORM */}
                 <form onSubmit={handleLogin}>
                     <CardContent className="grid gap-6 px-6">
+                        {/* Show form-level errors if needed */}
+                        {Object.keys(errors).length > 0 && !Object.keys(errors).every((k) => k) && (
+                            <FormError message="Please check the errors below and try again." />
+                        )}
+
                         {/* EMAIL */}
                         <div className="grid gap-2">
                             <Label htmlFor="email">Institutional Email</Label>
                             <div className="relative">
-                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                 <Input
                                     id="email"
                                     type="email"
                                     placeholder="faculty@searchworks.edu"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                    className="pl-10 h-11"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    className={errors.email ? "border-destructive pl-0" : "pl-0"}
                                 />
                             </div>
+                            <FieldError message={errors.email} />
                         </div>
 
                         {/* PASSWORD */}
                         <div className="grid gap-2">
                             <Label htmlFor="password">Password</Label>
                             <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                 <Input
                                     id="password"
                                     type={showPassword ? "text" : "password"}
                                     placeholder="Enter your password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                    className="pl-10 pr-10 h-11"
+                                    value={formData.password}
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    className={errors.password ? "pr-10 border-destructive" : "pr-10"}
                                 />
                                 <Button
                                     type="button"
@@ -114,11 +121,12 @@ export default function LoginPage() {
                                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                 </Button>
                             </div>
+                            <FieldError message={errors.password} />
                         </div>
 
                         {/* NOTICE */}
                         <div className="mt-1 flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground leading-relaxed">
-                            <ShieldCheck className="h-4 w-4 mt-0.5" />
+                            <ShieldCheck className="h-4 w-4 mt-0.5 flex-shrink-0" />
                             <p>
                                 This system is restricted to authorized students, faculty, and administrators. All
                                 activities are logged and monitored.
@@ -126,7 +134,6 @@ export default function LoginPage() {
                         </div>
                     </CardContent>
 
-                    {/* FOOTER */}
                     <CardFooter className="flex flex-col gap-3 px-6 pb-6">
                         <Button type="submit" className="w-full mt-4" disabled={loading}>
                             {loading ? "Authenticating..." : "Sign In"}

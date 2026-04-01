@@ -6,6 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FieldError } from "@/components/form-error";
+import { gradeSchema } from "@/lib/validations";
 import { toast } from "sonner";
 import { Loader2, Save } from "lucide-react";
 
@@ -28,6 +31,7 @@ export default function GradingSheetPage() {
         midterm: "1.00",
         finals: "1.00",
     });
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
     const fetchData = async () => {
         setLoading(true);
@@ -56,9 +60,30 @@ export default function GradingSheetPage() {
 
     const handleSave = async (e: React.SubmitEvent) => {
         e.preventDefault();
+        setFormErrors({});
+
         const selectedStudent = students.find((s) => s.id === formData.studentId);
         if (!selectedStudent) {
             toast.error("Select a student");
+            return;
+        }
+
+        // Validate with Zod schema
+        const result = gradeSchema.safeParse({
+            studentId: formData.studentId,
+            subjectId: formData.subjectId,
+            prelim: formData.prelim,
+            midterm: formData.midterm,
+            finals: formData.finals,
+        });
+
+        if (!result.success) {
+            const fieldErrors: Record<string, string> = {};
+            result.error.issues.forEach((issue: any) => {
+                const field = issue.path[0] as string;
+                fieldErrors[field] = issue.message;
+            });
+            setFormErrors(fieldErrors);
             return;
         }
 
@@ -69,7 +94,7 @@ export default function GradingSheetPage() {
         const remarks = Number(finalGrade) <= 3.0 ? "PASSED" : "FAILED";
 
         try {
-            await fetch("/api/grades", {
+            const res = await fetch("/api/grades", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -77,13 +102,18 @@ export default function GradingSheetPage() {
                     studentId: selectedStudent.id,
                     subjectId: formData.subjectId,
                     courseId: selectedStudent.courseId,
-                    prelim: formData.prelim,
-                    midterm: formData.midterm,
-                    finals: formData.finals,
+                    prelim: Number(formData.prelim),
+                    midterm: Number(formData.midterm),
+                    finals: Number(formData.finals),
                     finalGrade,
                     remarks,
                 }),
             });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.message || "Failed to save grade");
+            }
 
             toast.success(`Saved: ${finalGrade} (${remarks})`);
             fetchData();
@@ -114,94 +144,62 @@ export default function GradingSheetPage() {
 
     return (
         <div className="p-6 space-y-6 w-full">
-            {/* HEADER + FILTERS */}
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            {/* HEADER */}
+            <div>
                 <h2 className="text-3xl font-bold">Grading Sheet</h2>
-
-                <div className="flex flex-wrap gap-3 w-full lg:w-auto items-center">
-                    {/* SEARCH */}
-                    <Input
-                        placeholder="Search..."
-                        className="w-full lg:w-64 p-2 text-sm"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-
-                    {/* COURSE FILTER */}
-                    <select
-                        className="w-full lg:w-48 p-2 border rounded-md text-sm bg-background"
-                        value={selectedCourse}
-                        onChange={(e) => setSelectedCourse(e.target.value)}
-                    >
-                        <option value="">All Courses</option>
-                        {courseOptions.map((c) => (
-                            <option key={c.id} value={c.id}>
-                                {c.code}
-                            </option>
-                        ))}
-                    </select>
-
-                    {/* SUBJECT FILTER */}
-                    <select
-                        className="w-full lg:w-64 p-2 border rounded-md text-sm bg-background"
-                        value={selectedSubject}
-                        onChange={(e) => setSelectedSubject(e.target.value)}
-                    >
-                        <option value="">All Subjects</option>
-                        {subjects.map((s) => (
-                            <option key={s.id} value={s.id}>
-                                {s.code} - {s.title}
-                            </option>
-                        ))}
-                    </select>
-                </div>
             </div>
 
             {/* MAIN LAYOUT: KEEP ORIGINAL FORM + TABLE */}
-            <div className="flex gap-6 w-full">
+            <div className="flex flex-col lg:flex-row gap-6">
                 {/* FORM */}
-                <Card className="w-[320px] shrink-0 h-fit">
+                <Card className="w-80 shrink-0 h-fit">
                     <CardHeader>
                         <CardTitle>Grade Entry</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSave} className="space-y-4">
-                            <div>
+                            <div className="space-y-2">
                                 <Label>Student</Label>
-                                <select
-                                    className="w-full p-2 border rounded-md bg-background text-sm"
+                                <Select
                                     value={formData.studentId}
-                                    onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
-                                    required
+                                    onValueChange={(value) => setFormData({ ...formData, studentId: value })}
                                 >
-                                    <option value="">- Select Student -</option>
-                                    {students.map((s) => (
-                                        <option key={s.id} value={s.id}>
-                                            {s.lastName}, {s.firstName}
-                                        </option>
-                                    ))}
-                                </select>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="- Select Student -" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {students.map((s) => (
+                                            <SelectItem key={s.id} value={s.id}>
+                                                {s.lastName}, {s.firstName}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FieldError message={formErrors.studentId} />
                             </div>
 
-                            <div>
+                            <div className="space-y-2">
                                 <Label>Subject</Label>
-                                <select
-                                    className="w-full p-2 border rounded-md bg-background text-sm"
+                                <Select
                                     value={formData.subjectId}
-                                    onChange={(e) => setFormData({ ...formData, subjectId: e.target.value })}
-                                    required
+                                    onValueChange={(value) => setFormData({ ...formData, subjectId: value })}
                                 >
-                                    <option value="">- Select Subject -</option>
-                                    {subjects.map((s) => (
-                                        <option key={s.id} value={s.id}>
-                                            {s.code} - {s.title}
-                                        </option>
-                                    ))}
-                                </select>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="- Select Subject -" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {subjects.map((s) => (
+                                            <SelectItem key={s.id} value={s.id}>
+                                                {s.code} - {s.title}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FieldError message={formErrors.subjectId} />
                             </div>
 
                             <div className="grid grid-cols-3 gap-2">
-                                <div>
+                                <div className="space-y-2">
                                     <Label>Prelim</Label>
                                     <Input
                                         type="number"
@@ -216,8 +214,9 @@ export default function GradingSheetPage() {
                                             })
                                         }
                                     />
+                                    <FieldError message={formErrors.prelim} />
                                 </div>
-                                <div>
+                                <div className="space-y-2">
                                     <Label>Midterm</Label>
                                     <Input
                                         type="number"
@@ -232,8 +231,9 @@ export default function GradingSheetPage() {
                                             })
                                         }
                                     />
+                                    <FieldError message={formErrors.midterm} />
                                 </div>
-                                <div>
+                                <div className="space-y-2">
                                     <Label>Finals</Label>
                                     <Input
                                         type="number"
@@ -248,6 +248,7 @@ export default function GradingSheetPage() {
                                             })
                                         }
                                     />
+                                    <FieldError message={formErrors.finals} />
                                 </div>
                             </div>
 
@@ -265,62 +266,104 @@ export default function GradingSheetPage() {
                 </Card>
 
                 {/* TABLE */}
-                <div className="flex-1 overflow-x-auto">
-                    <Table className="w-full">
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Student</TableHead>
-                                <TableHead>Course Code</TableHead>
-                                <TableHead>Subject Code</TableHead>
-                                <TableHead>Subject</TableHead>
-                                <TableHead>P</TableHead>
-                                <TableHead>M</TableHead>
-                                <TableHead>F</TableHead>
-                                <TableHead className="text-right">Final</TableHead>
-                                <TableHead>Remarks</TableHead>
-                            </TableRow>
-                        </TableHeader>
+                <div className="flex-1 space-y-4">
+                    {/* FILTERS */}
+                    <div className="flex flex-wrap gap-3 items-center">
+                        {/* SEARCH */}
+                        <Input
+                            placeholder="Search..."
+                            className="w-full lg:w-64 p-2 text-sm"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
 
-                        <TableBody>
-                            {loading ? (
+                        {/* COURSE FILTER */}
+                        <Select value={selectedCourse} onValueChange={(value) => setSelectedCourse(value)}>
+                            <SelectTrigger className="w-full lg:w-48">
+                                <SelectValue placeholder="All Courses" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {courseOptions.map((c) => (
+                                    <SelectItem key={c.id} value={c.id}>
+                                        {c.code}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {/* SUBJECT FILTER */}
+                        <Select value={selectedSubject} onValueChange={(value) => setSelectedSubject(value)}>
+                            <SelectTrigger className="w-full lg:w-64">
+                                <SelectValue placeholder="All Subjects" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {subjects.map((s) => (
+                                    <SelectItem key={s.id} value={s.id}>
+                                        {s.code} - {s.title}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* TABLE */}
+                    <div className="overflow-x-auto">
+                        <Table className="w-full">
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={8} className="text-center py-10">
-                                        <Loader2 className="animate-spin mx-auto h-8 w-8 text-muted-foreground" />
-                                    </TableCell>
+                                    <TableHead>Student</TableHead>
+                                    <TableHead>Course Code</TableHead>
+                                    <TableHead>Subject Code</TableHead>
+                                    <TableHead>Subject</TableHead>
+                                    <TableHead>P</TableHead>
+                                    <TableHead>M</TableHead>
+                                    <TableHead>F</TableHead>
+                                    <TableHead className="text-right">Final</TableHead>
+                                    <TableHead>Remarks</TableHead>
                                 </TableRow>
-                            ) : filteredGrades.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
-                                        No records found
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                filteredGrades.map((g) => (
-                                    <TableRow key={g.id}>
-                                        <TableCell className="font-medium">{g.studentName}</TableCell>
-                                        <TableCell>{g.courseCode}</TableCell>
-                                        <TableCell>{g.subjectCode}</TableCell>
-                                        <TableCell>{g.subjectTitle}</TableCell>
-                                        <TableCell>{Number(g.prelim).toFixed(2)}</TableCell>
-                                        <TableCell>{Number(g.midterm).toFixed(2)}</TableCell>
-                                        <TableCell>{Number(g.finals).toFixed(2)}</TableCell>
-                                        <TableCell className="text-right font-bold">
-                                            {Number(g.finalGrade).toFixed(2)}
-                                        </TableCell>
-                                        <TableCell
-                                            className={
-                                                Number(g.finalGrade) <= 3
-                                                    ? "text-green-600 font-semibold"
-                                                    : "text-red-600 font-semibold"
-                                            }
-                                        >
-                                            {Number(g.finalGrade) <= 3 ? "Passed" : "Failed"}
+                            </TableHeader>
+
+                            <TableBody>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="text-center py-10">
+                                            <Loader2 className="animate-spin mx-auto h-8 w-8 text-muted-foreground" />
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                                ) : filteredGrades.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                                            No records found
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    filteredGrades.map((g) => (
+                                        <TableRow key={g.id}>
+                                            <TableCell className="font-medium">{g.studentName}</TableCell>
+                                            <TableCell>{g.courseCode}</TableCell>
+                                            <TableCell>{g.subjectCode}</TableCell>
+                                            <TableCell>{g.subjectTitle}</TableCell>
+                                            <TableCell>{Number(g.prelim).toFixed(2)}</TableCell>
+                                            <TableCell>{Number(g.midterm).toFixed(2)}</TableCell>
+                                            <TableCell>{Number(g.finals).toFixed(2)}</TableCell>
+                                            <TableCell className="text-right font-bold">
+                                                {Number(g.finalGrade).toFixed(2)}
+                                            </TableCell>
+                                            <TableCell
+                                                className={
+                                                    Number(g.finalGrade) <= 3
+                                                        ? "text-green-600 font-semibold"
+                                                        : "text-red-600 font-semibold"
+                                                }
+                                            >
+                                                {Number(g.finalGrade) <= 3 ? "Passed" : "Failed"}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </div>
             </div>
         </div>

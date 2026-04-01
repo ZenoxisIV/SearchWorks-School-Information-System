@@ -3,15 +3,21 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { FieldError } from "@/components/form-error";
 import { toast } from "sonner";
 import { Loader2, Plus, Pencil, Check, X, Trash2 } from "lucide-react";
+import { subjectSchema } from "@/lib/validations";
 
 export default function SubjectsPage() {
     const [subjects, setSubjects] = useState<any[]>([]);
+    const [courses, setCourses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [selected, setSelected] = useState<string[]>([]);
@@ -20,12 +26,13 @@ export default function SubjectsPage() {
 
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [formData, setFormData] = useState({ code: "", title: "", units: "" });
+    const [formData, setFormData] = useState({ code: "", title: "", units: "", description: "", courseId: "" });
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editData, setEditData] = useState<any>(null);
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-    const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<null | { type: "single" | "bulk"; id?: string }>(null);
 
     const fetchSubjects = async () => {
         setLoading(true);
@@ -40,12 +47,38 @@ export default function SubjectsPage() {
         }
     };
 
+    const fetchCourses = async () => {
+        try {
+            const res = await fetch("/api/courses", { credentials: "include" });
+            if (res.ok) {
+                setCourses(await res.json());
+            }
+        } catch {
+            toast.error("Failed to fetch courses");
+        }
+    };
+
     useEffect(() => {
         fetchSubjects();
+        fetchCourses();
     }, []);
 
     const handleAdd = async (e: React.SubmitEvent) => {
         e.preventDefault();
+        setErrors({});
+
+        // Validate with Zod schema
+        const result = subjectSchema.safeParse(formData);
+        if (!result.success) {
+            const fieldErrors: Record<string, string> = {};
+            result.error.issues.forEach((issue: any) => {
+                const field = issue.path[0] as string;
+                fieldErrors[field] = issue.message;
+            });
+            setErrors(fieldErrors);
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const res = await fetch("/api/subjects", {
@@ -57,7 +90,8 @@ export default function SubjectsPage() {
             if (!res.ok) throw await res.json();
             toast.success("Subject added");
             setOpen(false);
-            setFormData({ code: "", title: "", units: "" });
+            setFormData({ code: "", title: "", units: "", description: "", courseId: "" });
+            setErrors({});
             fetchSubjects();
         } catch (err: any) {
             toast.error(err.message || "Failed to add subject");
@@ -84,14 +118,14 @@ export default function SubjectsPage() {
     };
 
     const confirmDelete = (id: string) => {
-        setDeleteTargetId(id);
+        setDeleteTarget({ type: "single", id });
         setDeleteModalOpen(true);
     };
 
     const handleDeleteConfirmed = async () => {
-        if (!deleteTargetId) return;
+        if (!deleteTarget?.id) return;
         try {
-            const res = await fetch(`/api/subjects/${deleteTargetId}`, {
+            const res = await fetch(`/api/subjects/${deleteTarget.id}`, {
                 method: "DELETE",
                 credentials: "include",
             });
@@ -102,8 +136,8 @@ export default function SubjectsPage() {
             toast.error(err.message);
         } finally {
             setDeleteModalOpen(false);
-            setDeleteTargetId(null);
-            setSelected((prev) => prev.filter((id) => id !== deleteTargetId));
+            setDeleteTarget(null);
+            setSelected((prev) => prev.filter((id) => id !== deleteTarget.id));
         }
     };
 
@@ -150,10 +184,11 @@ export default function SubjectsPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="w-12">
-                                    <input
-                                        type="checkbox"
+                                    <Checkbox
                                         checked={selected.length === subjects.length && subjects.length > 0}
-                                        onChange={(e) => setSelected(e.target.checked ? subjects.map((s) => s.id) : [])}
+                                        onCheckedChange={(checked) =>
+                                            setSelected(checked ? subjects.map((s) => s.id) : [])
+                                        }
                                     />
                                 </TableHead>
                                 <TableHead>Code</TableHead>
@@ -181,10 +216,9 @@ export default function SubjectsPage() {
                                     return (
                                         <TableRow key={s.id}>
                                             <TableCell>
-                                                <input
-                                                    type="checkbox"
+                                                <Checkbox
                                                     checked={selected.includes(s.id)}
-                                                    onChange={() =>
+                                                    onCheckedChange={() =>
                                                         setSelected((prev) =>
                                                             prev.includes(s.id)
                                                                 ? prev.filter((i) => i !== s.id)
@@ -306,24 +340,13 @@ export default function SubjectsPage() {
             </Card>
 
             {/* Delete Confirmation Modal */}
-            <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
-                <DialogContent className="sm:max-w-sm">
-                    <DialogHeader>
-                        <DialogTitle>Confirm Delete</DialogTitle>
-                    </DialogHeader>
-                    <p className="py-4 text-center">
-                        Are you sure you want to delete this subject? This action cannot be undone.
-                    </p>
-                    <DialogFooter className="flex justify-center gap-4">
-                        <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button variant="destructive" onClick={handleDeleteConfirmed}>
-                            Delete
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <DeleteConfirmDialog
+                open={deleteModalOpen}
+                onOpenChange={setDeleteModalOpen}
+                title="Delete Subject"
+                description="Are you sure you want to delete this subject? This action cannot be undone."
+                onConfirm={handleDeleteConfirmed}
+            />
 
             {/* Add Subject Modal */}
             <Dialog open={open} onOpenChange={setOpen}>

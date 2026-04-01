@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, CheckCircle2, AlertCircle, Trash2, Plus, AlertTriangle } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Loader2, ArrowLeft, CheckCircle2, AlertCircle, Trash2, Plus } from "lucide-react";
 
 export default function StudentProfilePage() {
     const { id } = useParams();
@@ -317,25 +317,13 @@ export default function StudentProfilePage() {
             </div>
 
             {/* Delete Confirmation Modal */}
-            <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
-                <DialogContent className="sm:max-w-sm">
-                    <DialogHeader className="flex flex-col items-center gap-2">
-                        <AlertTriangle className="h-10 w-10 text-destructive" />
-                        <DialogTitle>Confirm Delete</DialogTitle>
-                    </DialogHeader>
-                    <p className="py-4 text-center">
-                        Are you sure you want to delete this reservation? This action cannot be undone.
-                    </p>
-                    <DialogFooter className="flex justify-center gap-4">
-                        <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button variant="destructive" onClick={handleDeleteConfirmed}>
-                            Delete
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <DeleteConfirmDialog
+                open={deleteModalOpen}
+                onOpenChange={setDeleteModalOpen}
+                title="Delete Reservation"
+                description="Are you sure you want to delete this reservation? This action cannot be undone."
+                onConfirm={handleDeleteConfirmed}
+            />
         </div>
     );
 }

@@ -598,6 +598,7 @@ app.get("/api/students/:id/profile", async (request) => {
             id: s.grades.id,
             subjectId: s.subjects.id,
             subjectCode: s.subjects.code,
+            subjectTitle: s.subjects.title,
 
             prelim: s.grades.prelim,
             midterm: s.grades.midterm,

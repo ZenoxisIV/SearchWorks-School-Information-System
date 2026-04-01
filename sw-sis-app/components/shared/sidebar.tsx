@@ -4,19 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import {
-    LayoutDashboard,
-    Users,
-    BookOpen,
-    Library,
-    CalendarCheck,
-    ClipboardList,
-    Settings,
-    ChevronLeft,
-    ChevronRight,
-    LucideIcon,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Users, BookOpen, Library, CalendarCheck, ClipboardList, Menu, LucideIcon, GitPullRequest } from "lucide-react";
 
 type SidebarItem = {
     title: string;
@@ -62,29 +50,17 @@ export function Sidebar({ onMobileClose }: SidebarProps) {
                 isCollapsed ? "w-16" : "w-64",
             )}
         >
-            {/* Header */}
-            <div className="flex h-14 items-center justify-between border-b px-3">
-                <Link
-                    href="/dashboard"
-                    className={cn(
-                        "flex items-center gap-2 font-semibold transition-all",
-                        isCollapsed && "justify-center w-full",
-                    )}
-                >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                        <LayoutDashboard className="h-4 w-4 text-primary-foreground" />
-                    </div>
-                    {!isCollapsed && <span>Dashboard</span>}
-                </Link>
-
-                <Button
-                    variant="ghost"
-                    size="icon"
+            <div className="flex h-14 items-center border-b px-3">
+                <button
                     onClick={() => setIsCollapsed((prev) => !prev)}
-                    className="hidden md:flex"
+                    className={cn("flex items-center gap-2 font-semibold w-full", isCollapsed && "justify-center")}
                 >
-                    {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-                </Button>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg">
+                        <Menu className="h-4 w-4 text-primary-foreground" />
+                    </div>
+
+                    {!isCollapsed && <span>Menu</span>}
+                </button>
             </div>
 
             {/* Navigation */}
@@ -139,16 +115,19 @@ export function Sidebar({ onMobileClose }: SidebarProps) {
 
             {/* Footer */}
             <div className="border-t p-3">
-                <Link
+                <a
                     href="https://github.com/ZenoxisIV/SearchWorks-School-Information-System"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground",
                         isCollapsed && "justify-center",
                     )}
+                    title="Source Code"
                 >
-                    <Settings className="h-4 w-4" />
+                    <GitPullRequest className="h-4 w-4" />
                     {!isCollapsed && <span>Source Code</span>}
-                </Link>
+                </a>
             </div>
         </aside>
     );

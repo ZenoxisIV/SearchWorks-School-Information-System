@@ -120,7 +120,7 @@ Code References
 
 Video Demo
 ---------------
-See the demo through this [YouTube]() link.
+See the demo through this [YouTube](https://youtu.be/mlzT2eWtQck) link.
 
 License
 -------

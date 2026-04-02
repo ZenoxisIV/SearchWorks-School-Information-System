@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -195,9 +200,7 @@ export default function UsersPage() {
 
     // --- Bulk Delete / Selection ---
     const toggleSelect = (userId: string) => {
-        setSelectedUsers((prev) =>
-            prev.includes(userId) ? prev.filter((s) => s !== userId) : [...prev, userId],
-        );
+        setSelectedUsers((prev) => (prev.includes(userId) ? prev.filter((s) => s !== userId) : [...prev, userId]));
     };
 
     const filteredUsers = users.filter((user) => {
@@ -236,57 +239,61 @@ export default function UsersPage() {
                                             <Plus className="h-4 w-4" /> Add User
                                         </Button>
                                     </DialogTrigger>
-                                <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Add New User</DialogTitle>
-                            </DialogHeader>
-                            <form onSubmit={handleAddUser} className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">Email</Label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        required
-                                    />
-                                    <FieldError message={errors.email} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="password">Password</Label>
-                                    <Input
-                                        id="password"
-                                        type="password"
-                                        value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                        required
-                                    />
-                                    <FieldError message={errors.password} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="role">Role</Label>
-                                    <Select
-                                        value={formData.role}
-                                        onValueChange={(value) => setFormData({ ...formData, role: value })}
-                                    >
-                                        <SelectTrigger id="role">
-                                            <SelectValue placeholder="Select a role" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="admin">Admin</SelectItem>
-                                            <SelectItem value="encoder">Encoder</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <FieldError message={errors.role} />
-                                </div>
-                                <DialogFooter>
-                                    <Button type="submit" disabled={isAdding} className="w-full">
-                                        {isAdding ? "Saving..." : "Save User"}
-                                    </Button>
-                                </DialogFooter>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Add New User</DialogTitle>
+                                        </DialogHeader>
+                                        <form onSubmit={handleAddUser} className="space-y-4 py-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="email">Email</Label>
+                                                <Input
+                                                    id="email"
+                                                    type="email"
+                                                    value={formData.email}
+                                                    onChange={(e) =>
+                                                        setFormData({ ...formData, email: e.target.value })
+                                                    }
+                                                    required
+                                                />
+                                                <FieldError message={errors.email} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="password">Password</Label>
+                                                <Input
+                                                    id="password"
+                                                    type="password"
+                                                    value={formData.password}
+                                                    onChange={(e) =>
+                                                        setFormData({ ...formData, password: e.target.value })
+                                                    }
+                                                    required
+                                                />
+                                                <FieldError message={errors.password} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="role">Role</Label>
+                                                <Select
+                                                    value={formData.role}
+                                                    onValueChange={(value) => setFormData({ ...formData, role: value })}
+                                                >
+                                                    <SelectTrigger id="role">
+                                                        <SelectValue placeholder="Select a role" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="admin">Admin</SelectItem>
+                                                        <SelectItem value="encoder">Encoder</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <FieldError message={errors.role} />
+                                            </div>
+                                            <DialogFooter>
+                                                <Button type="submit" disabled={isAdding} className="w-full">
+                                                    {isAdding ? "Saving..." : "Save User"}
+                                                </Button>
+                                            </DialogFooter>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
                                 {selectedUsers.length > 0 && (
                                     <Button
                                         variant="destructive"
@@ -400,18 +407,12 @@ export default function UsersPage() {
                                                 ) : (
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button
-                                                                size="icon"
-                                                                variant="ghost"
-                                                                title="More actions"
-                                                            >
+                                                            <Button size="icon" variant="ghost" title="More actions">
                                                                 <MoreHorizontal className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem
-                                                                onClick={() => startEdit(user)}
-                                                            >
+                                                            <DropdownMenuItem onClick={() => startEdit(user)}>
                                                                 <Pencil className="h-4 w-4 mr-2" />
                                                                 Edit
                                                             </DropdownMenuItem>

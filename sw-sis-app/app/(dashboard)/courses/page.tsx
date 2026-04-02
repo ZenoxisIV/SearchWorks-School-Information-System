@@ -44,7 +44,6 @@ export default function CoursesPage() {
 
     const router = useRouter();
 
-    // --- Fetch Courses ---
     const fetchCourses = async () => {
         try {
             setLoading(true);
@@ -63,7 +62,6 @@ export default function CoursesPage() {
         fetchCourses();
     }, []);
 
-    // --- Inline Editing ---
     const startEdit = (course: any) => {
         setEditingId(course.id);
         setEditData({ ...course });
@@ -93,7 +91,6 @@ export default function CoursesPage() {
         }
     };
 
-    // --- Add Course ---
     const handleAddCourse = async (e: React.SubmitEvent) => {
         e.preventDefault();
         setErrors({});
@@ -135,7 +132,6 @@ export default function CoursesPage() {
         }
     };
 
-    // --- Delete ---
     const handleDeleteConfirmed = async () => {
         if (!deleteTarget) return;
 
@@ -174,12 +170,10 @@ export default function CoursesPage() {
         }
     };
 
-    // --- Bulk Delete / Selection ---
     const toggleSelect = (id: string) => {
         setSelectedCourses((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
     };
 
-    // --- Global Search Filter ---
     const filteredCourses = courses.filter((course) =>
         [course.code, course.name, course.description].some((v) => v?.toLowerCase().includes(search.toLowerCase())),
     );
@@ -220,63 +214,65 @@ export default function CoursesPage() {
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Add New Course</DialogTitle>
-                            </DialogHeader>
-                            <form onSubmit={handleAddCourse} className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="code">Course Code</Label>
-                                    <Input
-                                        id="code"
-                                        placeholder="CS101"
-                                        value={formData.code}
-                                        onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                                        required
-                                    />
-                                    <FieldError message={errors.code} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">Course Name</Label>
-                                    <Input
-                                        id="name"
-                                        placeholder="Intro to CS"
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        required
-                                    />
-                                    <FieldError message={errors.name} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="description">Description</Label>
-                                    <Input
-                                        id="description"
-                                        value={formData.description}
-                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    />
-                                    <FieldError message={errors.description} />
-                                </div>
-                                <DialogFooter>
-                                    <Button type="submit" disabled={isAdding} className="w-full">
-                                        {isAdding ? "Saving..." : "Save Course"}
+                                        <DialogHeader>
+                                            <DialogTitle>Add New Course</DialogTitle>
+                                        </DialogHeader>
+                                        <form onSubmit={handleAddCourse} className="space-y-4 py-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="code">Course Code</Label>
+                                                <Input
+                                                    id="code"
+                                                    placeholder="CS101"
+                                                    value={formData.code}
+                                                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                                                    required
+                                                />
+                                                <FieldError message={errors.code} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="name">Course Name</Label>
+                                                <Input
+                                                    id="name"
+                                                    placeholder="Intro to CS"
+                                                    value={formData.name}
+                                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                    required
+                                                />
+                                                <FieldError message={errors.name} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="description">Description</Label>
+                                                <Input
+                                                    id="description"
+                                                    value={formData.description}
+                                                    onChange={(e) =>
+                                                        setFormData({ ...formData, description: e.target.value })
+                                                    }
+                                                />
+                                                <FieldError message={errors.description} />
+                                            </div>
+                                            <DialogFooter>
+                                                <Button type="submit" disabled={isAdding} className="w-full">
+                                                    {isAdding ? "Saving..." : "Save Course"}
+                                                </Button>
+                                            </DialogFooter>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
+                                {selectedCourses.length > 0 && (
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={() => {
+                                            setDeleteTarget({ type: "bulk" });
+                                            setDeleteModalOpen(true);
+                                        }}
+                                    >
+                                        Delete Selected ({selectedCourses.length})
                                     </Button>
-                                </DialogFooter>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
-                    {selectedCourses.length > 0 && (
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                                setDeleteTarget({ type: "bulk" });
-                                setDeleteModalOpen(true);
-                            }}
-                        >
-                            Delete Selected ({selectedCourses.length})
-                        </Button>
-                    )}
+                                )}
+                            </div>
                         </div>
-                    </div>
                     </div>
 
                     <Table>
@@ -383,18 +379,12 @@ export default function CoursesPage() {
                                                 ) : (
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button
-                                                                size="icon"
-                                                                variant="ghost"
-                                                                title="More actions"
-                                                            >
+                                                            <Button size="icon" variant="ghost" title="More actions">
                                                                 <MoreHorizontal className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem
-                                                                onClick={() => startEdit(course)}
-                                                            >
+                                                            <DropdownMenuItem onClick={() => startEdit(course)}>
                                                                 <Pencil className="h-4 w-4 mr-2" />
                                                                 Edit
                                                             </DropdownMenuItem>

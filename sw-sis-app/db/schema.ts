@@ -1,4 +1,16 @@
-import { pgTable, uuid, text, date, timestamp, integer, numeric, pgEnum, unique, check, jsonb } from "drizzle-orm/pg-core";
+import {
+    pgTable,
+    uuid,
+    text,
+    date,
+    timestamp,
+    integer,
+    numeric,
+    pgEnum,
+    unique,
+    check,
+    jsonb,
+} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const reservationStatusEnum = pgEnum("status", ["reserved", "cancelled"]);

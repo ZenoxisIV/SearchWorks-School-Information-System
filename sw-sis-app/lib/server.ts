@@ -33,12 +33,10 @@ if (JWT_SECRET.length < 32) {
     console.warn("WARNING: JWT_SECRET is less than 32 characters. For production, use a stronger secret.");
 }
 
-// Register cookie plugin with secret for cookie signing
 app.register(cookie, {
     secret: process.env.COOKIE_SECRET || JWT_SECRET,
 });
 
-// Register JWT plugin with secure configuration
 app.register(jwt, {
     secret: JWT_SECRET,
     sign: {
@@ -46,11 +44,10 @@ app.register(jwt, {
     },
     cookie: {
         cookieName: "token",
-        signed: false, // httpOnly + sameSite is sufficient security
+        signed: false,
     },
 });
 
-// Custom authentication decorator with better error handling
 app.decorate("authenticate", async (request: FastifyRequest, reply: FastifyReply) => {
     try {
         // Verify JWT from cookie or Authorization header
@@ -64,7 +61,6 @@ app.decorate("authenticate", async (request: FastifyRequest, reply: FastifyReply
     }
 });
 
-// Role-based access control decorator
 app.decorate("requireRole", (role: string) => async (request: FastifyRequest, reply: FastifyReply) => {
     try {
         await request.jwtVerify();
@@ -77,10 +73,8 @@ app.decorate("requireRole", (role: string) => async (request: FastifyRequest, re
     }
 });
 
-// Health check endpoint (unauthenticated)
 app.get("/api/health", async () => {
     return { status: "ok", timestamp: new Date().toISOString() };
 });
 
-// Register all route modules
 await registerRoutes(app);

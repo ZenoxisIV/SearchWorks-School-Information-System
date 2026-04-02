@@ -30,11 +30,7 @@ export async function logAudit(data: AuditLogData) {
 /**
  * Helper to compute changes between old and new values
  */
-export function computeChanges(
-    oldData: Record<string, any>,
-    newData: Record<string, any>,
-    fieldsToTrack: string[],
-) {
+export function computeChanges(oldData: Record<string, any>, newData: Record<string, any>, fieldsToTrack: string[]) {
     const changes: Record<string, { old: any; new: any }> = {};
 
     fieldsToTrack.forEach((field) => {

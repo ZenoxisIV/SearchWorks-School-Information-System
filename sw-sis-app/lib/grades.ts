@@ -19,7 +19,7 @@ export function calculateFinalGrade(
 
     // Weighted average calculation
     const weighted = p * prelimWeight + m * midtermWeight + f * finalsWeight;
-    
+
     // Round to nearest 0.25 increment
     // Formula: Math.round(value * 4) / 4
     const rounded = Math.round(weighted * 4) / 4;
@@ -45,7 +45,7 @@ export function calculateSimpleAverage(
     const f = Number(finals);
 
     const average = (p + m + f) / 3;
-    
+
     // Round to nearest 0.25 increment
     const rounded = Math.round(average * 4) / 4;
     const finalGrade = rounded.toFixed(2);

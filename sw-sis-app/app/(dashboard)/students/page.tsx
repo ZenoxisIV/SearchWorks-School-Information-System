@@ -56,7 +56,6 @@ export default function StudentsPage() {
 
     const router = useRouter();
 
-    // --- Fetch Students & Courses ---
     const fetchStudents = async () => {
         try {
             setLoading(true);
@@ -91,7 +90,6 @@ export default function StudentsPage() {
         fetchCourses();
     }, []);
 
-    // --- Inline Editing ---
     const startEdit = (student: any) => {
         setEditingId(student.studentNo);
         setEditData({ ...student });
@@ -125,7 +123,6 @@ export default function StudentsPage() {
         }
     };
 
-    // --- Add Student ---
     const handleAddStudent = async (e: React.SubmitEvent) => {
         e.preventDefault();
         setErrors({});
@@ -172,7 +169,6 @@ export default function StudentsPage() {
         }
     };
 
-    // --- Import Students from CSV ---
     const handleCsvImport = async () => {
         if (!csvFile) {
             toast.error("Please select a CSV file");
@@ -232,7 +228,6 @@ export default function StudentsPage() {
         }
     };
 
-    // --- Delete Student ---
     const handleDelete = async (studentNo: string) => {
         setDeleteTarget({ type: "single", id: studentNo });
         setDeleteModalOpen(true);
@@ -277,7 +272,6 @@ export default function StudentsPage() {
         }
     };
 
-    // --- Bulk Delete / Selection ---
     const toggleSelect = (studentNo: string) => {
         setSelectedStudents((prev) =>
             prev.includes(studentNo) ? prev.filter((s) => s !== studentNo) : [...prev, studentNo],
@@ -319,10 +313,13 @@ export default function StudentsPage() {
                                     />
                                 </div>
                                 <div className="w-48">
-                                    <Select value={selectedCourse} onValueChange={(value) => {
-                                        setSelectedCourse(value);
-                                        setCurrentPage(1);
-                                    }}>
+                                    <Select
+                                        value={selectedCourse}
+                                        onValueChange={(value) => {
+                                            setSelectedCourse(value);
+                                            setCurrentPage(1);
+                                        }}
+                                    >
                                         <SelectTrigger>
                                             <SelectValue placeholder="All Courses" />
                                         </SelectTrigger>
@@ -345,116 +342,126 @@ export default function StudentsPage() {
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Import Students from CSV</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="csvFile">CSV File</Label>
-                                    <Input
-                                        id="csvFile"
-                                        type="file"
-                                        accept=".csv"
-                                        onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                                    />
-                                    <p className="text-sm text-muted-foreground">
-                                        CSV must have columns: firstName, lastName, email, courseId, birthDate
-                                        (optional)
-                                    </p>
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <Button type="button" variant="outline" onClick={() => setCsvOpen(false)}>
-                                    Cancel
-                                </Button>
-                                <Button onClick={handleCsvImport} disabled={isImporting || !csvFile}>
-                                    {isImporting ? "Importing..." : "Import"}
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-                    <Dialog open={open} onOpenChange={setOpen}>
-                        <DialogTrigger asChild>
-                            <Button size="sm" className="gap-2">
-                                <Plus className="h-4 w-4" />
-                                Add Student
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Add New Student</DialogTitle>
-                            </DialogHeader>
-                            <form onSubmit={handleAddStudent} className="space-y-4 py-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="firstName">First Name</Label>
-                                        <Input
-                                            id="firstName"
-                                            value={formData.firstName}
-                                            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                                            required
-                                        />
-                                        <FieldError message={errors.firstName} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="lastName">Last Name</Label>
-                                        <Input
-                                            id="lastName"
-                                            value={formData.lastName}
-                                            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                                            required
-                                        />
-                                        <FieldError message={errors.lastName} />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">Email</Label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        required
-                                    />
-                                    <FieldError message={errors.email} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="birthDate">Birth Date</Label>
-                                    <Input
-                                        id="birthDate"
-                                        type="date"
-                                        value={formData.birthDate}
-                                        onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                                    />
-                                    <FieldError message={errors.birthDate} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="course">Course</Label>
-                                    <Select
-                                        value={formData.courseId}
-                                        onValueChange={(value) => setFormData({ ...formData, courseId: value })}
-                                    >
-                                        <SelectTrigger id="course">
-                                            <SelectValue placeholder="Select a course" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {courses.map((course) => (
-                                                <SelectItem key={course.id} value={course.id}>
-                                                    {course.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FieldError message={errors.courseId} />
-                                </div>
-                                <DialogFooter>
-                                    <Button type="submit" disabled={isAdding} className="w-full">
-                                        {isAdding ? "Saving..." : "Save Student"}
-                                    </Button>
-                                </DialogFooter>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
+                                        <DialogHeader>
+                                            <DialogTitle>Import Students from CSV</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="space-y-4 py-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="csvFile">CSV File</Label>
+                                                <Input
+                                                    id="csvFile"
+                                                    type="file"
+                                                    accept=".csv"
+                                                    onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                                                />
+                                                <p className="text-sm text-muted-foreground">
+                                                    CSV must have columns: firstName, lastName, email, courseId,
+                                                    birthDate (optional)
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <DialogFooter>
+                                            <Button type="button" variant="outline" onClick={() => setCsvOpen(false)}>
+                                                Cancel
+                                            </Button>
+                                            <Button onClick={handleCsvImport} disabled={isImporting || !csvFile}>
+                                                {isImporting ? "Importing..." : "Import"}
+                                            </Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+                                <Dialog open={open} onOpenChange={setOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button size="sm" className="gap-2">
+                                            <Plus className="h-4 w-4" />
+                                            Add Student
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Add New Student</DialogTitle>
+                                        </DialogHeader>
+                                        <form onSubmit={handleAddStudent} className="space-y-4 py-4">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="firstName">First Name</Label>
+                                                    <Input
+                                                        id="firstName"
+                                                        value={formData.firstName}
+                                                        onChange={(e) =>
+                                                            setFormData({ ...formData, firstName: e.target.value })
+                                                        }
+                                                        required
+                                                    />
+                                                    <FieldError message={errors.firstName} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="lastName">Last Name</Label>
+                                                    <Input
+                                                        id="lastName"
+                                                        value={formData.lastName}
+                                                        onChange={(e) =>
+                                                            setFormData({ ...formData, lastName: e.target.value })
+                                                        }
+                                                        required
+                                                    />
+                                                    <FieldError message={errors.lastName} />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="email">Email</Label>
+                                                <Input
+                                                    id="email"
+                                                    type="email"
+                                                    value={formData.email}
+                                                    onChange={(e) =>
+                                                        setFormData({ ...formData, email: e.target.value })
+                                                    }
+                                                    required
+                                                />
+                                                <FieldError message={errors.email} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="birthDate">Birth Date</Label>
+                                                <Input
+                                                    id="birthDate"
+                                                    type="date"
+                                                    value={formData.birthDate}
+                                                    onChange={(e) =>
+                                                        setFormData({ ...formData, birthDate: e.target.value })
+                                                    }
+                                                />
+                                                <FieldError message={errors.birthDate} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="course">Course</Label>
+                                                <Select
+                                                    value={formData.courseId}
+                                                    onValueChange={(value) =>
+                                                        setFormData({ ...formData, courseId: value })
+                                                    }
+                                                >
+                                                    <SelectTrigger id="course">
+                                                        <SelectValue placeholder="Select a course" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {courses.map((course) => (
+                                                            <SelectItem key={course.id} value={course.id}>
+                                                                {course.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FieldError message={errors.courseId} />
+                                            </div>
+                                            <DialogFooter>
+                                                <Button type="submit" disabled={isAdding} className="w-full">
+                                                    {isAdding ? "Saving..." : "Save Student"}
+                                                </Button>
+                                            </DialogFooter>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
                             </div>
                             {selectedStudents.length > 0 && (
                                 <Button
@@ -473,186 +480,182 @@ export default function StudentsPage() {
 
                     {/* Table */}
                     <div className="overflow-x-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-12">
-                                    <Checkbox
-                                        checked={selectedStudents.length === students.length && students.length > 0}
-                                        onCheckedChange={() => {
-                                            if (selectedStudents.length === students.length) setSelectedStudents([]);
-                                            else setSelectedStudents(students.map((s) => s.studentNo));
-                                        }}
-                                    />
-                                </TableHead>
-                                <TableHead>Student No</TableHead>
-                                <TableHead>First Name</TableHead>
-                                <TableHead>Last Name</TableHead>
-                                <TableHead>Course</TableHead>
-                                <TableHead>Email</TableHead>
-                                <TableHead>Birth Date</TableHead>
-                                <TableHead className="text-right w-32">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-12">
+                                        <Checkbox
+                                            checked={selectedStudents.length === students.length && students.length > 0}
+                                            onCheckedChange={() => {
+                                                if (selectedStudents.length === students.length)
+                                                    setSelectedStudents([]);
+                                                else setSelectedStudents(students.map((s) => s.studentNo));
+                                            }}
+                                        />
+                                    </TableHead>
+                                    <TableHead>Student No</TableHead>
+                                    <TableHead>First Name</TableHead>
+                                    <TableHead>Last Name</TableHead>
+                                    <TableHead>Course</TableHead>
+                                    <TableHead>Email</TableHead>
+                                    <TableHead>Birth Date</TableHead>
+                                    <TableHead className="text-right w-32">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
 
-                        <TableBody>
-                            {paginated.map((student) => {
-                                const isEditing = editingId === student.studentNo;
-                                return (
-                                    <TableRow key={student.studentNo}>
-                                        <TableCell>
-                                            <Checkbox
-                                                checked={selectedStudents.includes(student.studentNo)}
-                                                onCheckedChange={() => toggleSelect(student.studentNo)}
-                                            />
-                                        </TableCell>
-                                        <TableCell>{student.studentNo}</TableCell>
-                                        <TableCell>
-                                            {isEditing ? (
-                                                <Input
-                                                    value={editData.firstName}
-                                                    onChange={(e) =>
-                                                        setEditData({ ...editData, firstName: e.target.value })
-                                                    }
-                                                    className="h-8"
+                            <TableBody>
+                                {paginated.map((student) => {
+                                    const isEditing = editingId === student.studentNo;
+                                    return (
+                                        <TableRow key={student.studentNo}>
+                                            <TableCell>
+                                                <Checkbox
+                                                    checked={selectedStudents.includes(student.studentNo)}
+                                                    onCheckedChange={() => toggleSelect(student.studentNo)}
                                                 />
-                                            ) : (
-                                                student.firstName
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {isEditing ? (
-                                                <Input
-                                                    value={editData.lastName}
-                                                    onChange={(e) =>
-                                                        setEditData({ ...editData, lastName: e.target.value })
-                                                    }
-                                                    className="h-8"
-                                                />
-                                            ) : (
-                                                student.lastName
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-sm">
-                                            {courses.find((c) => c.id === student.courseId)?.code || "-"}
-                                        </TableCell>
-                                        <TableCell>
-                                            {isEditing ? (
-                                                <Input
-                                                    value={editData.email}
-                                                    onChange={(e) =>
-                                                        setEditData({ ...editData, email: e.target.value })
-                                                    }
-                                                    className="h-8"
-                                                />
-                                            ) : (
-                                                student.email
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {isEditing ? (
-                                                <Input
-                                                    type="date"
-                                                    value={editData.birthDate}
-                                                    onChange={(e) =>
-                                                        setEditData({ ...editData, birthDate: e.target.value })
-                                                    }
-                                                    className="h-8"
-                                                />
-                                            ) : (
-                                                student.birthDate
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right flex justify-end gap-2">
-                                            {isEditing ? (
-                                                <>
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        onClick={() => saveEdit(student.studentNo)}
-                                                        disabled={isSaving}
-                                                    >
-                                                        {isSaving ? (
-                                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                                        ) : (
-                                                            <Check className="h-4 w-4" />
-                                                        )}
-                                                    </Button>
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="text-red-600"
-                                                        onClick={cancelEdit}
-                                                        disabled={isSaving}
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
-                                                </>
-                                            ) : (
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
+                                            </TableCell>
+                                            <TableCell>{student.studentNo}</TableCell>
+                                            <TableCell>
+                                                {isEditing ? (
+                                                    <Input
+                                                        value={editData.firstName}
+                                                        onChange={(e) =>
+                                                            setEditData({ ...editData, firstName: e.target.value })
+                                                        }
+                                                        className="h-8"
+                                                    />
+                                                ) : (
+                                                    student.firstName
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                {isEditing ? (
+                                                    <Input
+                                                        value={editData.lastName}
+                                                        onChange={(e) =>
+                                                            setEditData({ ...editData, lastName: e.target.value })
+                                                        }
+                                                        className="h-8"
+                                                    />
+                                                ) : (
+                                                    student.lastName
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-sm">
+                                                {courses.find((c) => c.id === student.courseId)?.code || "-"}
+                                            </TableCell>
+                                            <TableCell>
+                                                {isEditing ? (
+                                                    <Input
+                                                        value={editData.email}
+                                                        onChange={(e) =>
+                                                            setEditData({ ...editData, email: e.target.value })
+                                                        }
+                                                        className="h-8"
+                                                    />
+                                                ) : (
+                                                    student.email
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                {isEditing ? (
+                                                    <Input
+                                                        type="date"
+                                                        value={editData.birthDate}
+                                                        onChange={(e) =>
+                                                            setEditData({ ...editData, birthDate: e.target.value })
+                                                        }
+                                                        className="h-8"
+                                                    />
+                                                ) : (
+                                                    student.birthDate
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-right flex justify-end gap-2">
+                                                {isEditing ? (
+                                                    <>
                                                         <Button
                                                             size="icon"
                                                             variant="ghost"
-                                                            title="More actions"
+                                                            onClick={() => saveEdit(student.studentNo)}
+                                                            disabled={isSaving}
                                                         >
-                                                            <MoreHorizontal className="h-4 w-4" />
+                                                            {isSaving ? (
+                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                            ) : (
+                                                                <Check className="h-4 w-4" />
+                                                            )}
                                                         </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem
-                                                            onClick={() => window.open(`/students/${student.id}`, "_self")}
-                                                        >
-                                                            <Eye className="h-4 w-4 mr-2" />
-                                                            View Profile
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            onClick={() => startEdit(student)}
-                                                        >
-                                                            <Pencil className="h-4 w-4 mr-2" />
-                                                            Edit
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleDelete(student.studentNo)}
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
                                                             className="text-red-600"
+                                                            onClick={cancelEdit}
+                                                            disabled={isSaving}
                                                         >
-                                                            <Trash2 className="h-4 w-4 mr-2" />
-                                                            Delete
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </>
+                                                ) : (
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button size="icon" variant="ghost" title="More actions">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem
+                                                                onClick={() =>
+                                                                    window.open(`/students/${student.id}`, "_self")
+                                                                }
+                                                            >
+                                                                <Eye className="h-4 w-4 mr-2" />
+                                                                View Profile
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => startEdit(student)}>
+                                                                <Pencil className="h-4 w-4 mr-2" />
+                                                                Edit
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleDelete(student.studentNo)}
+                                                                className="text-red-600"
+                                                            >
+                                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
 
-                    {/* Pagination */}
-                    <div className="flex justify-end gap-2 mt-4">
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={currentPage === 1}
-                            onClick={() => setCurrentPage((p) => p - 1)}
-                        >
-                            Previous
-                        </Button>
-                        <span className="flex items-center px-2">
-                            Page {currentPage} of {totalPages || 1}
-                        </span>
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={currentPage === totalPages || totalPages === 0}
-                            onClick={() => setCurrentPage((p) => p + 1)}
-                        >
-                            Next
-                        </Button>
+                        {/* Pagination */}
+                        <div className="flex justify-end gap-2 mt-4">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage((p) => p - 1)}
+                            >
+                                Previous
+                            </Button>
+                            <span className="flex items-center px-2">
+                                Page {currentPage} of {totalPages || 1}
+                            </span>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={currentPage === totalPages || totalPages === 0}
+                                onClick={() => setCurrentPage((p) => p + 1)}
+                            >
+                                Next
+                            </Button>
+                        </div>
                     </div>
-                    </div>
-
                 </CardContent>
             </Card>
 

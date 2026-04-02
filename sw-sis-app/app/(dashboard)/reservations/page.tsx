@@ -93,7 +93,6 @@ export default function AdminReservationsPage() {
         }
     };
 
-    // Filter reservations by search and subject code
     const filteredReservations = reservations.filter(
         (r) =>
             (r.studentName.toLowerCase().includes(search.toLowerCase()) ||
@@ -102,11 +101,10 @@ export default function AdminReservationsPage() {
             (filterSubjectCode === "" || r.subjectCode === filterSubjectCode),
     );
 
-    // Pagination
     const totalPages = Math.ceil(filteredReservations.length / itemsPerPage);
     const paginatedReservations = filteredReservations.slice(
         (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
+        currentPage * itemsPerPage,
     );
 
     return (
@@ -121,7 +119,6 @@ export default function AdminReservationsPage() {
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSave} className="space-y-4">
-
                             <div className="space-y-2">
                                 <Label>Subject</Label>
                                 <Select
@@ -159,8 +156,6 @@ export default function AdminReservationsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-
-
 
                             <Button type="submit" disabled={isSaving} className="w-full">
                                 {isSaving && <Loader2 className="animate-spin h-4 w-4 mr-2" />}

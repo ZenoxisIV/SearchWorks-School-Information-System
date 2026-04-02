@@ -4,157 +4,156 @@ import * as s from "@/db/schema";
 import { ilike, eq, inArray } from "drizzle-orm";
 
 export async function coursesRoutes(app: FastifyInstance) {
-  app.get("/api/courses", { onRequest: [app.authenticate] }, async (req) => {
-    const { search } = req.query as { search?: string };
+    app.get("/api/courses", { onRequest: [app.authenticate] }, async (req) => {
+        const { search } = req.query as { search?: string };
 
-    return db
-      .select()
-      .from(s.courses)
-      .where(search ? ilike(s.courses.name, `%${search}%`) : undefined);
-  });
-
-  app.post("/api/courses", { onRequest: [app.authenticate] }, async (request, reply) => {
-    try {
-      const body = request.body as any;
-
-      if (!body.code || !body.name) {
-        return reply.status(400).send({ message: "Code and name are required" });
-      }
-
-      // Check duplicate code - optimized with LIMIT 1
-      const existing = await db
-        .select({ id: s.courses.id })
-        .from(s.courses)
-        .where(eq(s.courses.code, body.code))
-        .limit(1);
-
-      if (existing.length) {
-        return reply.status(400).send({ message: "Course code already exists" });
-      }
-
-      const newCourse = await db
-        .insert(s.courses)
-        .values({
-          code: body.code,
-          name: body.name,
-          description: body.description,
-        })
-        .returning();
-
-      return reply.status(201).send(newCourse[0]);
-    } catch (err) {
-      return reply.status(500).send({ message: "Failed to create course" });
-    }
-  });
-
-  app.patch("/api/courses/:id", { onRequest: [app.authenticate] }, async (request, reply) => {
-    try {
-      const { id } = request.params as { id: string };
-      const body = request.body as any;
-
-      // Prevent duplicate code - optimized with LIMIT 1
-      const existing = await db
-        .select({ id: s.courses.id })
-        .from(s.courses)
-        .where(eq(s.courses.code, body.code))
-        .limit(1);
-
-      if (existing.length && existing[0].id !== id) {
-        return reply.status(400).send({ message: "Course code already exists" });
-      }
-
-      const updated = await db
-        .update(s.courses)
-        .set({
-          code: body.code,
-          name: body.name,
-          description: body.description,
-        })
-        .where(eq(s.courses.id, id))
-        .returning();
-
-      if (!updated.length) {
-        return reply.status(404).send({ message: "Course not found" });
-      }
-
-      return updated[0];
-    } catch {
-      return reply.status(500).send({ message: "Failed to update course" });
-    }
-  });
-
-  // Delete a single course
-  app.delete("/api/courses/:id", { onRequest: [app.authenticate] }, async (request, reply) => {
-    try {
-      const { id } = request.params as { id: string };
-
-      await db.delete(s.courses).where(eq(s.courses.id, id));
-
-      return { message: "Course deleted" };
-    } catch {
-      return reply.status(500).send({ message: "Failed to delete course" });
-    }
-  });
-
-  // Bulk delete
-  app.delete("/api/courses", { onRequest: [app.authenticate] }, async (request, reply) => {
-    try {
-      const { ids } = request.body as { ids: string[] };
-
-      if (!ids?.length) {
-        return reply.status(400).send({ message: "No IDs provided" });
-      }
-
-      await db.delete(s.courses).where(inArray(s.courses.id, ids));
-
-      return { message: "Courses deleted" };
-    } catch {
-      return reply.status(500).send({ message: "Failed to delete courses" });
-    }
-  });
-
-  app.get("/api/courses/:id/subjects", { onRequest: [app.authenticate] }, async (req) => {
-    const { id } = req.params as { id: string };
-
-    // Fetch all subjects with their prerequisites in 2 optimized queries instead of N+1
-    const subjects = await db
-      .select({
-        id: s.subjects.id,
-        code: s.subjects.code,
-        title: s.subjects.title,
-      })
-      .from(s.subjects)
-      .where(eq(s.subjects.courseId, id));
-
-    if (subjects.length === 0) return [];
-
-    // Fetch ALL prerequisites for these subjects in a single query
-    const subjectIds = subjects.map((s) => s.id);
-    const allPrereqs = await db
-      .select({
-        subjectId: s.subjectPrerequisites.subjectId,
-        prerequisiteSubjectId: s.subjectPrerequisites.prerequisiteSubjectId,
-        prerequisiteCode: s.subjects.code,
-      })
-      .from(s.subjectPrerequisites)
-      .innerJoin(s.subjects, eq(s.subjectPrerequisites.prerequisiteSubjectId, s.subjects.id))
-      .where(inArray(s.subjectPrerequisites.subjectId, subjectIds));
-
-    // Map prerequisites to subjects (in-memory grouping)
-    const prereqsBySubject = new Map<string, any[]>();
-    allPrereqs.forEach((p) => {
-      if (!prereqsBySubject.has(p.subjectId)) {
-        prereqsBySubject.set(p.subjectId, []);
-      }
-      prereqsBySubject.get(p.subjectId)!.push({
-        prerequisiteSubjectId: p.prerequisiteSubjectId,
-        prerequisiteCode: p.prerequisiteCode,
-      });
+        return db
+            .select()
+            .from(s.courses)
+            .where(search ? ilike(s.courses.name, `%${search}%`) : undefined);
     });
 
-    return subjects.map((sub) => ({
-      ...sub,
-      prerequisites: prereqsBySubject.get(sub.id) || [],
-    }));
-  });
+    app.post("/api/courses", { onRequest: [app.authenticate] }, async (request, reply) => {
+        try {
+            const body = request.body as any;
+
+            if (!body.code || !body.name) {
+                return reply.status(400).send({ message: "Code and name are required" });
+            }
+
+            const existing = await db
+                .select({ id: s.courses.id })
+                .from(s.courses)
+                .where(eq(s.courses.code, body.code))
+                .limit(1);
+
+            if (existing.length) {
+                return reply.status(400).send({ message: "Course code already exists" });
+            }
+
+            const newCourse = await db
+                .insert(s.courses)
+                .values({
+                    code: body.code,
+                    name: body.name,
+                    description: body.description,
+                })
+                .returning();
+
+            return reply.status(201).send(newCourse[0]);
+        } catch (err) {
+            return reply.status(500).send({ message: "Failed to create course" });
+        }
+    });
+
+    app.patch("/api/courses/:id", { onRequest: [app.authenticate] }, async (request, reply) => {
+        try {
+            const { id } = request.params as { id: string };
+            const body = request.body as any;
+
+            // Prevent duplicate code - optimized with LIMIT 1
+            const existing = await db
+                .select({ id: s.courses.id })
+                .from(s.courses)
+                .where(eq(s.courses.code, body.code))
+                .limit(1);
+
+            if (existing.length && existing[0].id !== id) {
+                return reply.status(400).send({ message: "Course code already exists" });
+            }
+
+            const updated = await db
+                .update(s.courses)
+                .set({
+                    code: body.code,
+                    name: body.name,
+                    description: body.description,
+                })
+                .where(eq(s.courses.id, id))
+                .returning();
+
+            if (!updated.length) {
+                return reply.status(404).send({ message: "Course not found" });
+            }
+
+            return updated[0];
+        } catch {
+            return reply.status(500).send({ message: "Failed to update course" });
+        }
+    });
+
+    // Delete a single course
+    app.delete("/api/courses/:id", { onRequest: [app.authenticate] }, async (request, reply) => {
+        try {
+            const { id } = request.params as { id: string };
+
+            await db.delete(s.courses).where(eq(s.courses.id, id));
+
+            return { message: "Course deleted" };
+        } catch {
+            return reply.status(500).send({ message: "Failed to delete course" });
+        }
+    });
+
+    // Bulk delete
+    app.delete("/api/courses", { onRequest: [app.authenticate] }, async (request, reply) => {
+        try {
+            const { ids } = request.body as { ids: string[] };
+
+            if (!ids?.length) {
+                return reply.status(400).send({ message: "No IDs provided" });
+            }
+
+            await db.delete(s.courses).where(inArray(s.courses.id, ids));
+
+            return { message: "Courses deleted" };
+        } catch {
+            return reply.status(500).send({ message: "Failed to delete courses" });
+        }
+    });
+
+    app.get("/api/courses/:id/subjects", { onRequest: [app.authenticate] }, async (req) => {
+        const { id } = req.params as { id: string };
+
+        // Fetch all subjects with their prerequisites in 2 optimized queries instead of N+1
+        const subjects = await db
+            .select({
+                id: s.subjects.id,
+                code: s.subjects.code,
+                title: s.subjects.title,
+            })
+            .from(s.subjects)
+            .where(eq(s.subjects.courseId, id));
+
+        if (subjects.length === 0) return [];
+
+        // Fetch ALL prerequisites for these subjects in a single query
+        const subjectIds = subjects.map((s) => s.id);
+        const allPrereqs = await db
+            .select({
+                subjectId: s.subjectPrerequisites.subjectId,
+                prerequisiteSubjectId: s.subjectPrerequisites.prerequisiteSubjectId,
+                prerequisiteCode: s.subjects.code,
+            })
+            .from(s.subjectPrerequisites)
+            .innerJoin(s.subjects, eq(s.subjectPrerequisites.prerequisiteSubjectId, s.subjects.id))
+            .where(inArray(s.subjectPrerequisites.subjectId, subjectIds));
+
+        // Map prerequisites to subjects (in-memory grouping)
+        const prereqsBySubject = new Map<string, any[]>();
+        allPrereqs.forEach((p) => {
+            if (!prereqsBySubject.has(p.subjectId)) {
+                prereqsBySubject.set(p.subjectId, []);
+            }
+            prereqsBySubject.get(p.subjectId)!.push({
+                prerequisiteSubjectId: p.prerequisiteSubjectId,
+                prerequisiteCode: p.prerequisiteCode,
+            });
+        });
+
+        return subjects.map((sub) => ({
+            ...sub,
+            prerequisites: prereqsBySubject.get(sub.id) || [],
+        }));
+    });
 }

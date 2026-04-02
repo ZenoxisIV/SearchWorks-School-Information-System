@@ -96,11 +96,7 @@ export default function GradingSheetPage() {
 
         setIsSaving(true);
 
-        const { finalGrade, remarks } = calculateFinalGrade(
-            formData.prelim,
-            formData.midterm,
-            formData.finals,
-        );
+        const { finalGrade, remarks } = calculateFinalGrade(formData.prelim, formData.midterm, formData.finals);
 
         try {
             const res = await fetch("/api/grades", {
@@ -142,26 +138,21 @@ export default function GradingSheetPage() {
 
     const courseOptions = courses.map((c) => ({ id: c.id, code: c.code, name: c.name }));
 
-    // Get students who reserved the selected subject
     const getStudentsForSubject = (): any[] => {
         if (!formData.subjectId) return [];
-        
-        // Find the selected subject to get its code
+
         const selectedSubject = subjects.find((s) => s.id === formData.subjectId);
         if (!selectedSubject) return [];
-        
-        // Filter reservations by subject code
+
         const reservationsForSubject = reservations.filter((r) => r.subjectCode === selectedSubject.code);
-        
-        // Get student names from those reservations
+
         const reservedStudentNames = reservationsForSubject.map((r) => r.studentName);
-        
-        // Filter students by matching their full name with the reserved student names
+
         const filtered = students.filter((s) => {
             const fullName = `${s.firstName} ${s.lastName}`;
             return reservedStudentNames.includes(fullName);
         });
-        
+
         return filtered;
     };
 
@@ -174,12 +165,8 @@ export default function GradingSheetPage() {
         return matchesSearch && matchesCourse && matchesSubject;
     });
 
-    // Pagination for grades table
     const totalPages = Math.ceil(filteredGrades.length / itemsPerPage);
-    const paginatedGrades = filteredGrades.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
+    const paginatedGrades = filteredGrades.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     return (
         <div className="p-6 space-y-6 w-full">
@@ -226,8 +213,14 @@ export default function GradingSheetPage() {
                                     onValueChange={(value) => setFormData({ ...formData, studentId: value })}
                                     disabled={!formData.subjectId}
                                 >
-                                    <SelectTrigger className={!formData.subjectId ? "opacity-50 cursor-not-allowed" : ""}>
-                                        <SelectValue placeholder={!formData.subjectId ? "Select a subject first" : "- Select Student -"} />
+                                    <SelectTrigger
+                                        className={!formData.subjectId ? "opacity-50 cursor-not-allowed" : ""}
+                                    >
+                                        <SelectValue
+                                            placeholder={
+                                                !formData.subjectId ? "Select a subject first" : "- Select Student -"
+                                            }
+                                        />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {getStudentsForSubject().map((s) => (

@@ -562,7 +562,7 @@ Jane,Smith,jane.smith@example.com,1999-05-10,CS102`;
                                                     student.lastName
                                                 )}
                                             </TableCell>
-                                            <TableCell className="text-sm">
+                                            <TableCell>
                                                 {courses.find((c) => c.id === student.courseId)?.code || "-"}
                                             </TableCell>
                                             <TableCell>

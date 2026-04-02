@@ -372,7 +372,7 @@ export default function UsersPage() {
                                                     </Select>
                                                 ) : (
                                                     <span className="inline-block px-2 py-1 rounded-md text-sm font-medium bg-muted">
-                                                        {user.role === "admin" ? "🔑 Admin" : "✏️ Encoder"}
+                                                        {user.role === "admin" ? "Admin" : "Encoder"}
                                                     </span>
                                                 )}
                                             </TableCell>

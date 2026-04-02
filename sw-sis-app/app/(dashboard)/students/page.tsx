@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { FieldError } from "@/components/form-error";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Check, X, Trash2, Eye, MoreHorizontal, Upload } from "lucide-react";
+import { Loader2, Plus, Pencil, Check, X, Trash2, Eye, MoreHorizontal, Upload, Download } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -71,6 +71,22 @@ export default function StudentsPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const sampleCsv = `firstName,lastName,email,birthDate,courseCode
+John,Doe,john.doe@example.com,2000-01-01,CS101
+Jane,Smith,jane.smith@example.com,1999-05-10,CS102`;
+
+    const downloadSampleCsv = () => {
+        const blob = new Blob([sampleCsv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "students-sample.csv";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
 
     const fetchCourses = async () => {
@@ -186,13 +202,13 @@ export default function StudentsPage() {
 
             // Parse header
             const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
-            const requiredFields = ["firstname", "lastname", "email", "courseid"];
+            const requiredFields = ["firstname", "lastname", "email", "coursecode"];
             if (!requiredFields.every((f) => headers.includes(f))) {
                 toast.error(`CSV must have columns: ${requiredFields.join(", ")}`);
                 return;
             }
 
-            // Parse rows
+            // Parse rows (expect `courseCode` column)
             const students = lines.slice(1).map((line) => {
                 const values = line.split(",").map((v) => v.trim());
                 return {
@@ -200,7 +216,7 @@ export default function StudentsPage() {
                     lastName: values[headers.indexOf("lastname")] || "",
                     email: values[headers.indexOf("email")] || "",
                     birthDate: values[headers.indexOf("birthdate")] || null,
-                    courseId: values[headers.indexOf("courseid")] || "",
+                    courseCode: values[headers.indexOf("coursecode")] || "",
                 };
             });
 
@@ -346,18 +362,23 @@ export default function StudentsPage() {
                                             <DialogTitle>Import Students from CSV</DialogTitle>
                                         </DialogHeader>
                                         <div className="space-y-4 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex-1 space-y-2">
+                                                    <Label htmlFor="csvFile">CSV File</Label>
+                                                    <Input
+                                                        id="csvFile"
+                                                        type="file"
+                                                        accept=".csv"
+                                                        onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                                                    />
+                                                </div>
+                                            </div>
+
                                             <div className="space-y-2">
-                                                <Label htmlFor="csvFile">CSV File</Label>
-                                                <Input
-                                                    id="csvFile"
-                                                    type="file"
-                                                    accept=".csv"
-                                                    onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                                                />
-                                                <p className="text-sm text-muted-foreground">
-                                                    CSV must have columns: firstName, lastName, email, courseId,
-                                                    birthDate (optional)
-                                                </p>
+                                                <Button size="sm" variant="ghost" onClick={downloadSampleCsv}>
+                                                    <Download className="h-4 w-4 gap-2" />
+                                                    Download Sample CSV
+                                                </Button>
                                             </div>
                                         </div>
                                         <DialogFooter>

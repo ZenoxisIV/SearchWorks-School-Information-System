@@ -34,7 +34,7 @@ export const courseSchema = z.object({
         .min(1, { message: "Course code is required" })
         .min(2, { message: "Course code must be at least 2 characters" })
         .max(20, { message: "Course code must be at most 20 characters" })
-        .regex(/^[A-Z0-9\-]+$/, { message: "Course code must be alphanumeric with hyphens" }),
+        .regex(/^[A-Za-z0-9]+$/, { message: "Course code must be alphanumeric only" }),
     name: z
         .string()
         .min(1, { message: "Course name is required" })

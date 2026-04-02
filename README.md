@@ -6,8 +6,8 @@ Setup
 -----
 1. Prerequisites
    - [Node.js](https://nodejs.org/en/download) 18+ (recommended)
-   - pnpm
-   - A Postgres-compatible database (Neon or PostgreSQL)
+   - [pnpm](https://pnpm.io/)
+   - A Postgres-compatible database ([Neon](https://neon.com/) or [PostgreSQL](https://www.postgresql.org/))
 
 2. Clone and install
 
@@ -19,7 +19,7 @@ pnpm install
 
 3. Environment
 
-- Create a `.env` file at the repository root (this repo ignores `.env*` in git). Required environment variables:
+- Create a `.env` file at the application's root directory (`sw-sis-app`). Required environment variables:
 
 ```
 DATABASE_URL=postgresql://user:password@host:port/dbname

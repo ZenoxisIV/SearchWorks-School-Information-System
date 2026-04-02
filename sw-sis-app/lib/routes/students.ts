@@ -18,20 +18,29 @@ export async function studentsRoutes(app: FastifyInstance) {
             const body = request.body as any;
 
             // Validation
-            if (!body.firstName || !body.lastName || !body.email || !body.courseId) {
+            if (!body.firstName || !body.lastName || !body.email || !(body.courseId || body.courseCode)) {
                 return reply
                     .status(400)
-                    .send({ message: "Missing required fields: firstName, lastName, email, courseId" });
+                    .send({ message: "Missing required fields: firstName, lastName, email, courseCode or courseId" });
             }
 
-            // Verify course exists
-            const course = await db.select().from(s.courses).where(eq(s.courses.id, body.courseId)).limit(1);
-            if (!course.length) {
-                return reply.status(404).send({ message: "Course not found" });
+            let courseIdToUse = body.courseId as string | undefined;
+            if (!courseIdToUse && body.courseCode) {
+                const found = await db
+                    .select({ id: s.courses.id })
+                    .from(s.courses)
+                    .where(eq(s.courses.code, body.courseCode))
+                    .limit(1);
+                if (!found.length) return reply.status(404).send({ message: "Course not found for provided courseCode" });
+                courseIdToUse = found[0].id;
             }
 
-            // Generate a unique student number (e.g., 2026-1711900000)
-            const studentNo = `2026-${Date.now().toString().slice(-6)}`; // ! Note: Need a more robust generation strategy for production
+            if (!courseIdToUse) {
+                return reply.status(400).send({ message: "Invalid or missing courseCode/courseId" });
+            }
+
+            // Generate a unique student number (e.g., 2026-17119)
+            const studentNo = `2026-${Math.random().toString().slice(2, 7)}`;
 
             const newStudent = await db
                 .insert(s.students)
@@ -40,8 +49,8 @@ export async function studentsRoutes(app: FastifyInstance) {
                     firstName: body.firstName,
                     lastName: body.lastName,
                     email: body.email,
-                    birthDate: body.birthDate,
-                    courseId: body.courseId,
+                    birthDate: body.birthDate ?? new Date().toISOString().slice(0, 10),
+                    courseId: courseIdToUse,
                 })
                 .returning();
 
@@ -63,32 +72,64 @@ export async function studentsRoutes(app: FastifyInstance) {
 
             // Validate and transform records
             const records = body.map((row: any) => {
-                if (!row.firstName || !row.lastName || !row.email || !row.courseId) {
-                    throw new Error(`Invalid record: missing required fields (firstName, lastName, email, courseId)`);
+                if (!row.firstName || !row.lastName || !row.email || !(row.courseCode || row.courseId)) {
+                    throw new Error(
+                        `Invalid record: missing required fields (firstName, lastName, email, courseCode)`,
+                    );
                 }
                 return {
-                    studentNo: `2026-${Date.now().toString().slice(-10)}-${Math.random().toString(36).substring(7)}`,
+                    rawCourse: row.courseCode || row.courseId,
+                    studentNo: `2026-${Math.random().toString().slice(2, 8)}`,
                     firstName: row.firstName,
                     lastName: row.lastName,
                     email: row.email,
                     birthDate: row.birthDate || null,
-                    courseId: row.courseId,
                 };
             });
 
-            // Verify all courses exist
-            const courseIds = [...new Set(records.map((r: any) => r.courseId))];
-            const courses = await db
-                .select({ id: s.courses.id })
-                .from(s.courses)
-                .where(inArray(s.courses.id, courseIds));
+            // Determine whether rawCourse values are codes or ids by checking existing course codes
+            const rawCourses = [...new Set(records.map((r: any) => r.rawCourse))];
 
-            if (courses.length !== courseIds.length) {
-                return reply.status(404).send({ message: "One or more courses not found" });
+            // Try to find matching courses by code first
+            const foundByCode = await db
+                .select({ id: s.courses.id, code: s.courses.code })
+                .from(s.courses)
+                .where(inArray(s.courses.code, rawCourses));
+
+            // Map code -> id for those found
+            const codeToId: Record<string, string> = {};
+            foundByCode.forEach((c: any) => (codeToId[c.code] = c.id));
+
+            // For any rawCourses not matched by code, attempt to match by id
+            const unmatched = rawCourses.filter((r) => !codeToId[r]);
+            if (unmatched.length) {
+                const foundById = await db
+                    .select({ id: s.courses.id })
+                    .from(s.courses)
+                    .where(inArray(s.courses.id, unmatched));
+                foundById.forEach((c: any) => (codeToId[c.id] = c.id));
             }
 
+            // If any rawCourses still unresolved -> error
+            const unresolved = rawCourses.filter((r) => !codeToId[r]);
+            if (unresolved.length) {
+                return reply
+                    .status(404)
+                    .send({ message: `One or more course codes/ids not found: ${unresolved.join(", ")}` });
+            }
+
+            // Build final insertable records with mapped courseId
+            const insertRows = records.map((r: any) => ({
+                studentNo: r.studentNo,
+                firstName: r.firstName,
+                lastName: r.lastName,
+                email: r.email,
+                birthDate: r.birthDate,
+                courseId: codeToId[r.rawCourse],
+            }));
+
             // Insert all records
-            const inserted = await db.insert(s.students).values(records).returning();
+            const inserted = await db.insert(s.students).values(insertRows).returning();
 
             return reply.status(201).send({
                 message: `Successfully imported ${inserted.length} students`,
@@ -127,7 +168,6 @@ export async function studentsRoutes(app: FastifyInstance) {
         }
     });
 
-    // Delete a single student
     app.delete("/api/students/:studentNo", { onRequest: [app.authenticate] }, async (request, reply) => {
         try {
             const { studentNo } = request.params as { studentNo: string };
@@ -142,7 +182,6 @@ export async function studentsRoutes(app: FastifyInstance) {
         }
     });
 
-    // Bulk delete
     app.delete("/api/students", { onRequest: [app.authenticate] }, async (request, reply) => {
         try {
             const { studentNos } = request.body as { studentNos: string[] };
@@ -220,7 +259,6 @@ export async function studentsRoutes(app: FastifyInstance) {
         const { id } = request.params as { id: string };
         const { subjectId } = request.body as { subjectId: string };
 
-        // Optimized: select only needed columns
         const [student, subject] = await Promise.all([
             db
                 .select({ id: s.students.id, courseId: s.students.courseId })

@@ -12,7 +12,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { FieldError } from "@/components/form-error";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Check, X, Trash2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Check, X, Trash2, MoreHorizontal } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { subjectSchema } from "@/lib/validations";
 
 export default function SubjectsPage() {
@@ -20,6 +26,7 @@ export default function SubjectsPage() {
     const [courses, setCourses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const [selectedCourse, setSelectedCourse] = useState("");
     const [selected, setSelected] = useState<string[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
@@ -142,44 +149,147 @@ export default function SubjectsPage() {
     };
 
     // Filter subjects client-side
-    const filteredSubjects = subjects.filter(
-        (s) =>
-            s.code.toLowerCase().includes(search.toLowerCase()) || s.title.toLowerCase().includes(search.toLowerCase()),
-    );
+    const filteredSubjects = subjects.filter((s) => {
+        const matchesSearch =
+            s.code.toLowerCase().includes(search.toLowerCase()) || s.title.toLowerCase().includes(search.toLowerCase());
+        const matchesCourse = !selectedCourse || s.courseId === selectedCourse;
+        return matchesSearch && matchesCourse;
+    });
 
     const paginatedSubjects = filteredSubjects.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
     const totalPages = Math.ceil(filteredSubjects.length / itemsPerPage);
 
     return (
         <div className="space-y-6 p-6">
-            <div className="flex justify-between items-end flex-wrap gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold">Subjects</h2>
-                    <p className="text-muted-foreground text-sm">Manage academic subjects and unit credits.</p>
-                </div>
-
-                <div className="flex flex-wrap gap-2 items-center">
-                    <Input
-                        placeholder="Search..."
-                        className="w-56"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                    <Button
-                        variant="destructive"
-                        disabled={!selected.length}
-                        onClick={() => selected.forEach(confirmDelete)}
-                    >
-                        Delete Selected ({selected.length})
-                    </Button>
-                    <Button onClick={() => setOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" /> Add Subject
-                    </Button>
-                </div>
+            <div>
+                <h2 className="text-3xl font-bold">Subjects</h2>
+                <p className="text-muted-foreground text-sm">Manage academic subjects and unit credits.</p>
             </div>
 
+            {/* Table */}
             <Card>
-                <CardContent className="p-0">
+                <CardContent className="pt-6">
+                    {/* Search and Filter Controls */}
+                    <div className="space-y-4 mb-6">
+                        <div className="flex flex-col sm:flex-row gap-3 items-end">
+                            <div className="flex flex-col sm:flex-row gap-3 items-end">
+                                <div className="w-64">
+                                    <Input
+                                        placeholder="Search by code or title..."
+                                        value={search}
+                                        onChange={(e) => {
+                                            setSearch(e.target.value);
+                                            setCurrentPage(1);
+                                        }}
+                                    />
+                                </div>
+                                <div className="w-48 flex gap-2">
+                                    <Select value={selectedCourse} onValueChange={(val) => {
+                                        setSelectedCourse(val);
+                                        setCurrentPage(1);
+                                    }}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="All courses" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {courses.map((c) => (
+                                                <SelectItem key={c.id} value={c.id}>
+                                                    {c.code} - {c.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {selectedCourse && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                setSelectedCourse("");
+                                                setCurrentPage(1);
+                                            }}
+                                            className="px-2"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex gap-2 ml-auto">
+                                <Dialog open={open} onOpenChange={setOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button size="sm" className="gap-2">
+                                            <Plus className="h-4 w-4" />
+                                            Add Subject
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add Subject</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleAdd} className="space-y-4">
+                        <div>
+                            <Label>Code</Label>
+                            <Input
+                                required
+                                value={formData.code}
+                                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                            />
+                            <FieldError message={errors.code} />
+                        </div>
+                        <div>
+                            <Label>Title</Label>
+                            <Input
+                                required
+                                value={formData.title}
+                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            />
+                            <FieldError message={errors.title} />
+                        </div>
+                        <div>
+                            <Label>Units</Label>
+                            <Input
+                                type="number"
+                                required
+                                value={formData.units}
+                                onChange={(e) => setFormData({ ...formData, units: e.target.value })}
+                            />
+                            <FieldError message={errors.units} />
+                        </div>
+                        <div>
+                            <Label>Course</Label>
+                            <Select value={formData.courseId} onValueChange={(val) => setFormData({ ...formData, courseId: val })}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select course" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {courses.map((c) => (
+                                        <SelectItem key={c.id} value={c.id}>
+                                            {c.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <FieldError message={errors.courseId} />
+                        </div>
+                        <Button type="submit" className="w-full" disabled={isSubmitting}>
+                            {isSubmitting ? <Loader2 className="animate-spin" /> : "Save"}
+                        </Button>
+                    </form>
+                </DialogContent>
+                                </Dialog>
+                                {selected.length > 0 && (
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={() => selected.forEach(confirmDelete)}
+                                    >
+                                        Delete Selected ({selected.length})
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -193,20 +303,21 @@ export default function SubjectsPage() {
                                 </TableHead>
                                 <TableHead>Code</TableHead>
                                 <TableHead>Title</TableHead>
+                                <TableHead>Course Code</TableHead>
                                 <TableHead>Units</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableHead className="text-right w-32">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-10">
+                                    <TableCell colSpan={6} className="text-center py-10">
                                         <Loader2 className="animate-spin mx-auto" />
                                     </TableCell>
                                 </TableRow>
                             ) : paginatedSubjects.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                                    <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                                         No subjects found
                                     </TableCell>
                                 </TableRow>
@@ -256,6 +367,17 @@ export default function SubjectsPage() {
                                             <TableCell>
                                                 {editing ? (
                                                     <Input
+                                                        className="h-8"
+                                                        value={editData.courseId}
+                                                        disabled
+                                                    />
+                                                ) : (
+                                                    courses.find((c) => c.id === s.courseId)?.code || "-"
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                {editing ? (
+                                                    <Input
                                                         className="h-8 w-20"
                                                         type="number"
                                                         value={editData.units}
@@ -267,7 +389,7 @@ export default function SubjectsPage() {
                                                     s.units
                                                 )}
                                             </TableCell>
-                                            <TableCell className="flex justify-end gap-1">
+                                            <TableCell className="text-right flex justify-end gap-1">
                                                 {editing ? (
                                                     <>
                                                         <Button
@@ -286,25 +408,35 @@ export default function SubjectsPage() {
                                                         </Button>
                                                     </>
                                                 ) : (
-                                                    <>
-                                                        <Button
-                                                            size="icon"
-                                                            variant="secondary"
-                                                            onClick={() => {
-                                                                setEditingId(s.id);
-                                                                setEditData(s);
-                                                            }}
-                                                        >
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            size="icon"
-                                                            variant="destructive"
-                                                            onClick={() => confirmDelete(s.id)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                title="More actions"
+                                                            >
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem
+                                                                onClick={() => {
+                                                                    setEditingId(s.id);
+                                                                    setEditData(s);
+                                                                }}
+                                                            >
+                                                                <Pencil className="h-4 w-4 mr-2" />
+                                                                Edit
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                onClick={() => confirmDelete(s.id)}
+                                                                className="text-red-600"
+                                                            >
+                                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 )}
                                             </TableCell>
                                         </TableRow>
@@ -347,45 +479,6 @@ export default function SubjectsPage() {
                 description="Are you sure you want to delete this subject? This action cannot be undone."
                 onConfirm={handleDeleteConfirmed}
             />
-
-            {/* Add Subject Modal */}
-            <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Add Subject</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleAdd} className="space-y-4">
-                        <div>
-                            <Label>Code</Label>
-                            <Input
-                                required
-                                value={formData.code}
-                                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <Label>Title</Label>
-                            <Input
-                                required
-                                value={formData.title}
-                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <Label>Units</Label>
-                            <Input
-                                type="number"
-                                required
-                                value={formData.units}
-                                onChange={(e) => setFormData({ ...formData, units: e.target.value })}
-                            />
-                        </div>
-                        <Button type="submit" className="w-full" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="animate-spin" /> : "Save"}
-                        </Button>
-                    </form>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }

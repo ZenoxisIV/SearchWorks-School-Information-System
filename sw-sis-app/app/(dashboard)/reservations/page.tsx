@@ -23,6 +23,8 @@ export default function AdminReservationsPage() {
     const [filterSubjectCode, setFilterSubjectCode] = useState("");
 
     const [search, setSearch] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
@@ -100,6 +102,13 @@ export default function AdminReservationsPage() {
             (filterSubjectCode === "" || r.subjectCode === filterSubjectCode),
     );
 
+    // Pagination
+    const totalPages = Math.ceil(filteredReservations.length / itemsPerPage);
+    const paginatedReservations = filteredReservations.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
     return (
         <div className="p-6 space-y-6">
             <h2 className="text-3xl font-bold">Subject Reservations</h2>
@@ -112,24 +121,6 @@ export default function AdminReservationsPage() {
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSave} className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>Student</Label>
-                                <Select
-                                    value={selectedStudentId}
-                                    onValueChange={(value) => setSelectedStudentId(value)}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="- Select Student -" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {students.map((s) => (
-                                            <SelectItem key={s.id} value={s.id}>
-                                                {s.lastName}, {s.firstName}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
 
                             <div className="space-y-2">
                                 <Label>Subject</Label>
@@ -149,6 +140,27 @@ export default function AdminReservationsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
+
+                            <div className="space-y-2">
+                                <Label>Student</Label>
+                                <Select
+                                    value={selectedStudentId}
+                                    onValueChange={(value) => setSelectedStudentId(value)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="- Select Student -" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {students.map((s) => (
+                                            <SelectItem key={s.id} value={s.id}>
+                                                {s.lastName}, {s.firstName}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+
 
                             <Button type="submit" disabled={isSaving} className="w-full">
                                 {isSaving && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
@@ -200,14 +212,14 @@ export default function AdminReservationsPage() {
                                         <Loader2 className="animate-spin inline" />
                                     </TableCell>
                                 </TableRow>
-                            ) : filteredReservations.length === 0 ? (
+                            ) : paginatedReservations.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
                                         No reservations found
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredReservations.map((r) => (
+                                paginatedReservations.map((r) => (
                                     <TableRow key={r.id}>
                                         <TableCell className="font-medium">{r.studentName}</TableCell>
                                         <TableCell className="font-mono text-xs">{r.subjectCode}</TableCell>
@@ -227,6 +239,29 @@ export default function AdminReservationsPage() {
                             )}
                         </TableBody>
                     </Table>
+
+                    {/* Pagination */}
+                    <div className="flex justify-end gap-2 mt-4">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage((p) => p - 1)}
+                        >
+                            Previous
+                        </Button>
+                        <span className="flex items-center px-2 text-sm">
+                            Page {currentPage} of {totalPages || 1}
+                        </span>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={currentPage === totalPages || totalPages === 0}
+                            onClick={() => setCurrentPage((p) => p + 1)}
+                        >
+                            Next
+                        </Button>
+                    </div>
                 </div>
             </div>
 

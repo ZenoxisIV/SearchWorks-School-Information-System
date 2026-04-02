@@ -13,7 +13,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { FieldError } from "@/components/form-error";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Check, X, Trash2, UserRoundPen, Upload } from "lucide-react";
+import { Loader2, Plus, Pencil, Check, X, Trash2, Eye, MoreHorizontal, Upload } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { studentSchema } from "@/lib/validations";
 
 export default function StudentsPage() {
@@ -41,6 +47,7 @@ export default function StudentsPage() {
 
     const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
     const [search, setSearch] = useState("");
+    const [selectedCourse, setSelectedCourse] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
@@ -278,7 +285,9 @@ export default function StudentsPage() {
     };
     const filteredStudents = students.filter((student) => {
         const values = [student.studentNo, student.firstName, student.lastName, student.email, student.birthDate];
-        return values.some((v) => v?.toString().toLowerCase().includes(search.toLowerCase()));
+        const matchesSearch = values.some((v) => v?.toString().toLowerCase().includes(search.toLowerCase()));
+        const matchesCourse = !selectedCourse || student.courseId === selectedCourse;
+        return matchesSearch && matchesCourse;
     });
 
     const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
@@ -286,37 +295,56 @@ export default function StudentsPage() {
 
     return (
         <div className="space-y-6 p-6">
-            {/* Header + Add */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Students</h2>
-                    <p className="text-muted-foreground">View and manage enrolled student records.</p>
-                </div>
+            {/* Header */}
+            <div>
+                <h2 className="text-3xl font-bold tracking-tight">Students</h2>
+                <p className="text-muted-foreground">View and manage enrolled student records.</p>
+            </div>
 
-                <div className="flex flex-wrap gap-2">
-                    <Input
-                        placeholder="Search..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-64"
-                    />
-                    <Button
-                        variant="destructive"
-                        onClick={() => {
-                            setDeleteTarget({ type: "bulk" });
-                            setDeleteModalOpen(true);
-                        }}
-                        disabled={!selectedStudents.length}
-                    >
-                        Delete Selected ({selectedStudents.length})
-                    </Button>
-                    <Dialog open={csvOpen} onOpenChange={setCsvOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" className="gap-2">
-                                <Upload className="h-4 w-4" /> Import CSV
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
+            {/* Table */}
+            <Card>
+                <CardContent className="pt-6">
+                    {/* Search and Filters - Inside Table */}
+                    <div className="space-y-4 mb-6">
+                        <div className="flex flex-col sm:flex-row gap-3 items-end">
+                            <div className="flex flex-col sm:flex-row gap-3 items-end">
+                                <div className="w-64">
+                                    <Input
+                                        placeholder="Search by name, ID, or email..."
+                                        value={search}
+                                        onChange={(e) => {
+                                            setSearch(e.target.value);
+                                            setCurrentPage(1);
+                                        }}
+                                    />
+                                </div>
+                                <div className="w-48">
+                                    <Select value={selectedCourse} onValueChange={(value) => {
+                                        setSelectedCourse(value);
+                                        setCurrentPage(1);
+                                    }}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="All Courses" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {courses.map((c) => (
+                                                <SelectItem key={c.id} value={c.id}>
+                                                    {c.code} - {c.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <div className="flex gap-2 ml-auto">
+                                <Dialog open={csvOpen} onOpenChange={setCsvOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button variant="outline" size="sm" className="gap-2">
+                                            <Upload className="h-4 w-4" />
+                                            Import CSV
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
                             <DialogHeader>
                                 <DialogTitle>Import Students from CSV</DialogTitle>
                             </DialogHeader>
@@ -347,8 +375,9 @@ export default function StudentsPage() {
                     </Dialog>
                     <Dialog open={open} onOpenChange={setOpen}>
                         <DialogTrigger asChild>
-                            <Button className="gap-2">
-                                <Plus className="h-4 w-4" /> Add Student
+                            <Button size="sm" className="gap-2">
+                                <Plus className="h-4 w-4" />
+                                Add Student
                             </Button>
                         </DialogTrigger>
                         <DialogContent>
@@ -426,16 +455,28 @@ export default function StudentsPage() {
                             </form>
                         </DialogContent>
                     </Dialog>
-                </div>
-            </div>
+                            </div>
+                            {selectedStudents.length > 0 && (
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => {
+                                        setDeleteTarget({ type: "bulk" });
+                                        setDeleteModalOpen(true);
+                                    }}
+                                >
+                                    Delete Selected ({selectedStudents.length})
+                                </Button>
+                            )}
+                        </div>
+                    </div>
 
-            {/* Table */}
-            <Card>
-                <CardContent>
+                    {/* Table */}
+                    <div className="overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>
+                                <TableHead className="w-12">
                                     <Checkbox
                                         checked={selectedStudents.length === students.length && students.length > 0}
                                         onCheckedChange={() => {
@@ -447,9 +488,10 @@ export default function StudentsPage() {
                                 <TableHead>Student No</TableHead>
                                 <TableHead>First Name</TableHead>
                                 <TableHead>Last Name</TableHead>
+                                <TableHead>Course</TableHead>
                                 <TableHead>Email</TableHead>
                                 <TableHead>Birth Date</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableHead className="text-right w-32">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
 
@@ -490,6 +532,9 @@ export default function StudentsPage() {
                                             ) : (
                                                 student.lastName
                                             )}
+                                        </TableCell>
+                                        <TableCell className="text-sm">
+                                            {courses.find((c) => c.id === student.courseId)?.code || "-"}
                                         </TableCell>
                                         <TableCell>
                                             {isEditing ? (
@@ -544,30 +589,38 @@ export default function StudentsPage() {
                                                     </Button>
                                                 </>
                                             ) : (
-                                                <>
-                                                    <Button
-                                                        size="icon"
-                                                        variant="outline"
-                                                        title="View Student Profile"
-                                                        onClick={() => window.open(`/students/${student.id}`, "_self")}
-                                                    >
-                                                        <UserRoundPen className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        size="icon"
-                                                        variant="secondary"
-                                                        onClick={() => startEdit(student)}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        size="icon"
-                                                        variant="destructive"
-                                                        onClick={() => handleDelete(student.studentNo)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            title="More actions"
+                                                        >
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem
+                                                            onClick={() => window.open(`/students/${student.id}`, "_self")}
+                                                        >
+                                                            <Eye className="h-4 w-4 mr-2" />
+                                                            View Profile
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            onClick={() => startEdit(student)}
+                                                        >
+                                                            <Pencil className="h-4 w-4 mr-2" />
+                                                            Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            onClick={() => handleDelete(student.studentNo)}
+                                                            className="text-red-600"
+                                                        >
+                                                            <Trash2 className="h-4 w-4 mr-2" />
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             )}
                                         </TableCell>
                                     </TableRow>
@@ -598,6 +651,8 @@ export default function StudentsPage() {
                             Next
                         </Button>
                     </div>
+                    </div>
+
                 </CardContent>
             </Card>
 

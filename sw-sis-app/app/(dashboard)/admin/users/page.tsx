@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { FieldError } from "@/components/form-error";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Check, X, Trash2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Check, X, Trash2, MoreHorizontal } from "lucide-react";
 import { userSchema } from "@/lib/validations";
 
 export default function UsersPage() {
@@ -209,37 +210,33 @@ export default function UsersPage() {
 
     return (
         <div className="space-y-6 p-6">
-            {/* Header + Add */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Users</h2>
-                    <p className="text-muted-foreground">Manage admin and encoder accounts.</p>
-                </div>
+            {/* Header */}
+            <div>
+                <h2 className="text-3xl font-bold tracking-tight">Users</h2>
+                <p className="text-muted-foreground">Manage admin and encoder accounts.</p>
+            </div>
 
-                <div className="flex flex-wrap gap-2">
-                    <Input
-                        placeholder="Search..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-64"
-                    />
-                    <Button
-                        variant="destructive"
-                        onClick={() => {
-                            setDeleteTarget({ type: "bulk" });
-                            setDeleteModalOpen(true);
-                        }}
-                        disabled={!selectedUsers.length}
-                    >
-                        Delete Selected ({selectedUsers.length})
-                    </Button>
-                    <Dialog open={open} onOpenChange={setOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="gap-2">
-                                <Plus className="h-4 w-4" /> Add User
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
+            {/* Table */}
+            <Card>
+                <CardContent className="pt-6">
+                    {/* Search and Controls */}
+                    <div className="space-y-4 mb-6">
+                        <div className="flex flex-col sm:flex-row gap-3 items-end">
+                            <div className="w-64">
+                                <Input
+                                    placeholder="Search..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex gap-2 ml-auto">
+                                <Dialog open={open} onOpenChange={setOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button size="sm" className="gap-2">
+                                            <Plus className="h-4 w-4" /> Add User
+                                        </Button>
+                                    </DialogTrigger>
+                                <DialogContent>
                             <DialogHeader>
                                 <DialogTitle>Add New User</DialogTitle>
                             </DialogHeader>
@@ -290,12 +287,22 @@ export default function UsersPage() {
                             </form>
                         </DialogContent>
                     </Dialog>
-                </div>
-            </div>
+                                {selectedUsers.length > 0 && (
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={() => {
+                                            setDeleteTarget({ type: "bulk" });
+                                            setDeleteModalOpen(true);
+                                        }}
+                                    >
+                                        Delete Selected ({selectedUsers.length})
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
 
-            {/* Table */}
-            <Card>
-                <CardContent className="pt-6">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -391,22 +398,32 @@ export default function UsersPage() {
                                                         </Button>
                                                     </>
                                                 ) : (
-                                                    <>
-                                                        <Button
-                                                            size="icon"
-                                                            variant="secondary"
-                                                            onClick={() => startEdit(user)}
-                                                        >
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            size="icon"
-                                                            variant="destructive"
-                                                            onClick={() => handleDelete(user.id)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                title="More actions"
+                                                            >
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem
+                                                                onClick={() => startEdit(user)}
+                                                            >
+                                                                <Pencil className="h-4 w-4 mr-2" />
+                                                                Edit
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleDelete(user.id)}
+                                                                className="text-red-600"
+                                                            >
+                                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 )}
                                             </TableCell>
                                         </TableRow>

@@ -100,6 +100,7 @@ export default function AuditLogsPage() {
 
   useEffect(() => {
     fetchLogs(1);
+    setCurrentPage(1);
   }, [search, actionFilter, fromDate, toDate]);
 
   const handleResetFilters = () => {
@@ -112,7 +113,15 @@ export default function AuditLogsPage() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString() + " " + date.toLocaleTimeString();
+    return date.toLocaleDateString("en-US", { 
+      year: "numeric", 
+      month: "2-digit", 
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    });
   };
 
   const formatGradeValue = (value: any) => {
@@ -134,6 +143,29 @@ export default function AuditLogsPage() {
     }
     return <Badge className="bg-blue-600">Update</Badge>;
   };
+
+  // Client-side filtering
+  const filtered = logs.filter((log) => {
+    const matchesSearch = !search || 
+      log.userEmail.toLowerCase().includes(search.toLowerCase()) ||
+      log.studentName.toLowerCase().includes(search.toLowerCase()) ||
+      log.studentNo.toLowerCase().includes(search.toLowerCase());
+    
+    const matchesAction = !actionFilter || log.action === actionFilter;
+    
+    const logDate = new Date(log.createdAt);
+    const fromDateObj = fromDate ? new Date(fromDate) : null;
+    const toDateObj = toDate ? new Date(toDate + "T23:59:59") : null;
+    
+    const matchesDateRange = (!fromDateObj || logDate >= fromDateObj) && 
+                              (!toDateObj || logDate <= toDateObj);
+    
+    return matchesSearch && matchesAction && matchesDateRange;
+  });
+
+  const pageSize = 10;
+  const totalFilteredPages = Math.ceil(filtered.length / pageSize);
+  const paginatedLogs = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="space-y-6 p-6">
@@ -248,14 +280,14 @@ export default function AuditLogsPage() {
                       <Loader2 className="animate-spin mx-auto h-8 w-8 text-muted-foreground" />
                     </TableCell>
                   </TableRow>
-                ) : logs.length === 0 ? (
+                ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                       No audit logs found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  logs.map((log) => (
+                  paginatedLogs.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell>{getActionBadge(log.action)}</TableCell>
                       <TableCell className="text-xs whitespace-nowrap">{formatDate(log.createdAt)}</TableCell>
@@ -299,34 +331,27 @@ export default function AuditLogsPage() {
           </div>
 
           {/* Pagination */}
-          {pagination.pages > 1 && (
-            <div className="flex justify-between items-center mt-6">
-              <div className="text-sm text-muted-foreground">
-                Showing {logs.length} of {pagination.total} logs
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={currentPage === 1 || loading}
-                  onClick={() => fetchLogs(currentPage - 1)}
-                >
-                  Previous
-                </Button>
-                <div className="flex items-center px-3 text-sm">
-                  Page {currentPage} of {pagination.pages}
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={currentPage === pagination.pages || loading}
-                  onClick={() => fetchLogs(currentPage + 1)}
-                >
-                  Next
-                </Button>
-              </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={currentPage === 1 || loading}
+              onClick={() => setCurrentPage(currentPage - 1)}
+            >
+              Previous
+            </Button>
+            <div className="flex items-center px-3 text-sm">
+              Page {currentPage} of {totalFilteredPages || 1}
             </div>
-          )}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={currentPage === totalFilteredPages || totalFilteredPages === 0 || loading}
+              onClick={() => setCurrentPage(currentPage + 1)}
+            >
+              Next
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

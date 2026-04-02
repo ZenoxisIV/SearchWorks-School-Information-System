@@ -18,12 +18,15 @@ export default function GradingSheetPage() {
     const [students, setStudents] = useState<any[]>([]);
     const [subjects, setSubjects] = useState<any[]>([]);
     const [courses, setCourses] = useState<any[]>([]);
+    const [reservations, setReservations] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCourse, setSelectedCourse] = useState("");
     const [selectedSubject, setSelectedSubject] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     const [formData, setFormData] = useState({
         studentId: "",
@@ -37,17 +40,20 @@ export default function GradingSheetPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [gRes, sRes, subRes, cRes] = await Promise.all([
+            const [gRes, sRes, subRes, cRes, resRes] = await Promise.all([
                 fetch("/api/grades", { credentials: "include" }),
                 fetch("/api/students", { credentials: "include" }),
                 fetch("/api/subjects", { credentials: "include" }),
                 fetch("/api/courses", { credentials: "include" }),
+                fetch("/api/reservations", { credentials: "include" }),
             ]);
 
             setGrades(await gRes.json());
             setStudents(await sRes.json());
             setSubjects(await subRes.json());
             setCourses(await cRes.json());
+            const resData = await resRes.json();
+            setReservations(Array.isArray(resData) ? resData : []);
         } catch {
             toast.error("Failed to load data");
         } finally {
@@ -136,6 +142,29 @@ export default function GradingSheetPage() {
 
     const courseOptions = courses.map((c) => ({ id: c.id, code: c.code, name: c.name }));
 
+    // Get students who reserved the selected subject
+    const getStudentsForSubject = (): any[] => {
+        if (!formData.subjectId) return [];
+        
+        // Find the selected subject to get its code
+        const selectedSubject = subjects.find((s) => s.id === formData.subjectId);
+        if (!selectedSubject) return [];
+        
+        // Filter reservations by subject code
+        const reservationsForSubject = reservations.filter((r) => r.subjectCode === selectedSubject.code);
+        
+        // Get student names from those reservations
+        const reservedStudentNames = reservationsForSubject.map((r) => r.studentName);
+        
+        // Filter students by matching their full name with the reserved student names
+        const filtered = students.filter((s) => {
+            const fullName = `${s.firstName} ${s.lastName}`;
+            return reservedStudentNames.includes(fullName);
+        });
+        
+        return filtered;
+    };
+
     const filteredGrades = grades.filter((g) => {
         const matchesSearch =
             g.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -144,6 +173,13 @@ export default function GradingSheetPage() {
         const matchesSubject = !selectedSubject || g.subjectId === selectedSubject;
         return matchesSearch && matchesCourse && matchesSubject;
     });
+
+    // Pagination for grades table
+    const totalPages = Math.ceil(filteredGrades.length / itemsPerPage);
+    const paginatedGrades = filteredGrades.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
 
     return (
         <div className="p-6 space-y-6 w-full">
@@ -162,30 +198,12 @@ export default function GradingSheetPage() {
                     <CardContent>
                         <form onSubmit={handleSave} className="space-y-4">
                             <div className="space-y-2">
-                                <Label>Student</Label>
-                                <Select
-                                    value={formData.studentId}
-                                    onValueChange={(value) => setFormData({ ...formData, studentId: value })}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="- Select Student -" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {students.map((s) => (
-                                            <SelectItem key={s.id} value={s.id}>
-                                                {s.lastName}, {s.firstName}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <FieldError message={formErrors.studentId} />
-                            </div>
-
-                            <div className="space-y-2">
                                 <Label>Subject</Label>
                                 <Select
                                     value={formData.subjectId}
-                                    onValueChange={(value) => setFormData({ ...formData, subjectId: value })}
+                                    onValueChange={(value) => {
+                                        setFormData({ ...formData, subjectId: value, studentId: "" });
+                                    }}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="- Select Subject -" />
@@ -199,6 +217,27 @@ export default function GradingSheetPage() {
                                     </SelectContent>
                                 </Select>
                                 <FieldError message={formErrors.subjectId} />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Student</Label>
+                                <Select
+                                    value={formData.studentId}
+                                    onValueChange={(value) => setFormData({ ...formData, studentId: value })}
+                                    disabled={!formData.subjectId}
+                                >
+                                    <SelectTrigger className={!formData.subjectId ? "opacity-50 cursor-not-allowed" : ""}>
+                                        <SelectValue placeholder={!formData.subjectId ? "Select a subject first" : "- Select Student -"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {getStudentsForSubject().map((s) => (
+                                            <SelectItem key={s.id} value={s.id}>
+                                                {s.lastName}, {s.firstName}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FieldError message={formErrors.studentId} />
                             </div>
 
                             <div className="grid grid-cols-3 gap-2">
@@ -333,14 +372,14 @@ export default function GradingSheetPage() {
                                             <Loader2 className="animate-spin mx-auto h-8 w-8 text-muted-foreground" />
                                         </TableCell>
                                     </TableRow>
-                                ) : filteredGrades.length === 0 ? (
+                                ) : paginatedGrades.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                                        <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
                                             No records found
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredGrades.map((g) => (
+                                    paginatedGrades.map((g) => (
                                         <TableRow key={g.id}>
                                             <TableCell className="font-medium">{g.studentName}</TableCell>
                                             <TableCell>{g.courseCode}</TableCell>
@@ -367,6 +406,31 @@ export default function GradingSheetPage() {
                             </TableBody>
                         </Table>
                     </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex justify-end gap-2 mt-4">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage((p) => p - 1)}
+                            >
+                                Previous
+                            </Button>
+                            <span className="flex items-center px-2 text-sm">
+                                Page {currentPage} of {totalPages}
+                            </span>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage((p) => p + 1)}
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

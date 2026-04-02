@@ -5,36 +5,41 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
-import { FieldError } from "@/components/form-error";
-import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Check, X, Trash2, MoreHorizontal } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { courseSchema } from "@/lib/validations";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { FieldError } from "@/components/form-error";
+import { toast } from "sonner";
+import { Loader2, Plus, Pencil, Check, X, Trash2, MoreHorizontal } from "lucide-react";
+import { userSchema } from "@/lib/validations";
 
-export default function CoursesPage() {
-    const [courses, setCourses] = useState<any[]>([]);
+export default function UsersPage() {
+    const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const [openAdd, setOpenAdd] = useState(false);
+    const [open, setOpen] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
-    const [formData, setFormData] = useState({ code: "", name: "", description: "" });
+    const [formData, setFormData] = useState({
+        email: "",
+        password: "",
+        role: "encoder",
+    });
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editData, setEditData] = useState<any>(null);
     const [isSaving, setIsSaving] = useState(false);
 
-    const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
+    const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
     const [search, setSearch] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
@@ -44,13 +49,22 @@ export default function CoursesPage() {
 
     const router = useRouter();
 
-    const fetchCourses = async () => {
+    // --- Fetch Users ---
+    const fetchUsers = async () => {
         try {
             setLoading(true);
-            const res = await fetch("/api/courses", { credentials: "include" });
-            if (res.status === 401) return router.push("/login");
+            const res = await fetch("/api/users", { credentials: "include" });
+            if (res.status === 401) {
+                router.push("/login");
+                return;
+            }
+            if (res.status === 403) {
+                toast.error("You do not have permission to access this page");
+                router.push("/students");
+                return;
+            }
             const data = await res.json();
-            if (Array.isArray(data)) setCourses(data);
+            if (Array.isArray(data)) setUsers(data);
         } catch {
             toast.error("Could not connect to the server");
         } finally {
@@ -59,31 +73,37 @@ export default function CoursesPage() {
     };
 
     useEffect(() => {
-        fetchCourses();
+        fetchUsers();
     }, []);
 
-    const startEdit = (course: any) => {
-        setEditingId(course.id);
-        setEditData({ ...course });
+    // --- Inline Editing ---
+    const startEdit = (user: any) => {
+        setEditingId(user.id);
+        setEditData({ ...user });
     };
+
     const cancelEdit = () => {
         setEditingId(null);
         setEditData(null);
     };
-    const saveEdit = async (id: string) => {
+
+    const saveEdit = async (userId: string) => {
         setIsSaving(true);
         try {
-            const res = await fetch(`/api/courses/${id}`, {
+            const res = await fetch(`/api/users/${userId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(editData),
+                body: JSON.stringify({ role: editData.role }),
                 credentials: "include",
             });
             if (res.ok) {
-                toast.success("Course updated");
+                toast.success("User updated successfully");
                 setEditingId(null);
-                fetchCourses();
-            } else toast.error("Update failed");
+                fetchUsers();
+            } else {
+                const err = await res.json();
+                toast.error(err.message || "Update failed");
+            }
         } catch {
             toast.error("Error saving changes");
         } finally {
@@ -91,12 +111,13 @@ export default function CoursesPage() {
         }
     };
 
-    const handleAddCourse = async (e: React.SubmitEvent) => {
+    // --- Add User ---
+    const handleAddUser = async (e: React.SubmitEvent) => {
         e.preventDefault();
         setErrors({});
 
         // Validate with Zod schema
-        const result = courseSchema.safeParse(formData);
+        const result = userSchema.safeParse(formData);
         if (!result.success) {
             const fieldErrors: Record<string, string> = {};
             result.error.issues.forEach((issue: any) => {
@@ -109,21 +130,21 @@ export default function CoursesPage() {
 
         setIsAdding(true);
         try {
-            const res = await fetch("/api/courses", {
+            const res = await fetch("/api/users", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formData),
                 credentials: "include",
             });
             if (res.ok) {
-                toast.success("Course added");
-                setOpenAdd(false);
-                setFormData({ code: "", name: "", description: "" });
+                toast.success("User added successfully");
+                setOpen(false);
+                setFormData({ email: "", password: "", role: "encoder" });
                 setErrors({});
-                fetchCourses();
+                fetchUsers();
             } else {
                 const err = await res.json();
-                toast.error(err.message || "Failed to add course");
+                toast.error(err.message || "Failed to add user");
             }
         } catch {
             toast.error("An error occurred");
@@ -132,134 +153,148 @@ export default function CoursesPage() {
         }
     };
 
+    // --- Delete User ---
+    const handleDelete = async (userId: string) => {
+        setDeleteTarget({ type: "single", id: userId });
+        setDeleteModalOpen(true);
+    };
+
     const handleDeleteConfirmed = async () => {
         if (!deleteTarget) return;
 
         try {
             if (deleteTarget.type === "single" && deleteTarget.id) {
-                const res = await fetch(`/api/courses/${deleteTarget.id}`, {
+                const res = await fetch(`/api/users/${deleteTarget.id}`, {
                     method: "DELETE",
-                    credentials: "include",
-                });
-                if (res.ok) toast.success("Course deleted");
-                else {
-                    const err = await res.json();
-                    toast.error(err.message || "Failed to delete");
-                }
-            } else if (deleteTarget.type === "bulk") {
-                const res = await fetch("/api/courses", {
-                    method: "DELETE",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ ids: selectedCourses }),
                     credentials: "include",
                 });
                 if (res.ok) {
-                    toast.success("Selected courses deleted");
-                    setSelectedCourses([]);
+                    toast.success("User deleted");
                 } else {
                     const err = await res.json();
-                    toast.error(err.message || "Failed to delete");
+                    toast.error(err.message || "Failed to delete user");
+                }
+            } else if (deleteTarget.type === "bulk") {
+                const res = await fetch("/api/users", {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ userIds: selectedUsers }),
+                    credentials: "include",
+                });
+                if (res.ok) {
+                    toast.success("Selected users deleted");
+                    setSelectedUsers([]);
+                } else {
+                    const err = await res.json();
+                    toast.error(err.message || "Failed to delete users");
                 }
             }
         } catch {
             toast.error("An error occurred");
         } finally {
-            fetchCourses();
+            fetchUsers();
             setDeleteModalOpen(false);
             setDeleteTarget(null);
         }
     };
 
-    const toggleSelect = (id: string) => {
-        setSelectedCourses((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+    // --- Bulk Delete / Selection ---
+    const toggleSelect = (userId: string) => {
+        setSelectedUsers((prev) => (prev.includes(userId) ? prev.filter((s) => s !== userId) : [...prev, userId]));
     };
 
-    const filteredCourses = courses.filter((course) =>
-        [course.code, course.name, course.description].some((v) => v?.toLowerCase().includes(search.toLowerCase())),
-    );
+    const filteredUsers = users.filter((user) => {
+        const values = [user.email, user.role];
+        return values.some((v) => v?.toString().toLowerCase().includes(search.toLowerCase()));
+    });
 
-    const totalPages = Math.ceil(filteredCourses.length / itemsPerPage);
-    const paginated = filteredCourses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+    const paginated = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     return (
         <div className="space-y-6 p-6">
             {/* Header */}
             <div>
-                <h2 className="text-3xl font-bold tracking-tight">Courses</h2>
-                <p className="text-muted-foreground">Manage all courses and curriculum details.</p>
+                <h2 className="text-3xl font-bold tracking-tight">Users</h2>
+                <p className="text-muted-foreground">Manage admin and encoder accounts.</p>
             </div>
 
             {/* Table */}
             <Card>
-                <CardContent className="pt-6">
-                    {/* Search and Filter Controls */}
+                <CardContent>
+                    {/* Search and Controls */}
                     <div className="space-y-4 mb-6">
                         <div className="flex flex-col sm:flex-row gap-3 items-end">
                             <div className="w-64">
                                 <Input
-                                    placeholder="Search by code, name, or description..."
+                                    placeholder="Search..."
                                     value={search}
-                                    onChange={(e) => {
-                                        setSearch(e.target.value);
-                                        setCurrentPage(1);
-                                    }}
+                                    onChange={(e) => setSearch(e.target.value)}
                                 />
                             </div>
                             <div className="flex gap-2 ml-auto">
-                                <Dialog open={openAdd} onOpenChange={setOpenAdd}>
+                                <Dialog open={open} onOpenChange={setOpen}>
                                     <DialogTrigger asChild>
                                         <Button size="sm" className="gap-2">
-                                            <Plus className="h-4 w-4" />
-                                            Add Course
+                                            <Plus className="h-4 w-4" /> Add User
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent>
                                         <DialogHeader>
-                                            <DialogTitle>Add New Course</DialogTitle>
+                                            <DialogTitle>Add New User</DialogTitle>
                                         </DialogHeader>
-                                        <form onSubmit={handleAddCourse} className="space-y-4 py-4">
+                                        <form onSubmit={handleAddUser} className="space-y-4 py-4">
                                             <div className="space-y-2">
-                                                <Label htmlFor="code">Course Code</Label>
+                                                <Label htmlFor="email">Email</Label>
                                                 <Input
-                                                    id="code"
-                                                    placeholder="CS101"
-                                                    value={formData.code}
-                                                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                                                    required
-                                                />
-                                                <FieldError message={errors.code} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="name">Course Name</Label>
-                                                <Input
-                                                    id="name"
-                                                    placeholder="Intro to CS"
-                                                    value={formData.name}
-                                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                                    required
-                                                />
-                                                <FieldError message={errors.name} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="description">Description</Label>
-                                                <Input
-                                                    id="description"
-                                                    value={formData.description}
+                                                    id="email"
+                                                    type="email"
+                                                    value={formData.email}
                                                     onChange={(e) =>
-                                                        setFormData({ ...formData, description: e.target.value })
+                                                        setFormData({ ...formData, email: e.target.value })
                                                     }
+                                                    required
                                                 />
-                                                <FieldError message={errors.description} />
+                                                <FieldError message={errors.email} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="password">Password</Label>
+                                                <Input
+                                                    id="password"
+                                                    type="password"
+                                                    value={formData.password}
+                                                    onChange={(e) =>
+                                                        setFormData({ ...formData, password: e.target.value })
+                                                    }
+                                                    required
+                                                />
+                                                <FieldError message={errors.password} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="role">Role</Label>
+                                                <Select
+                                                    value={formData.role}
+                                                    onValueChange={(value) => setFormData({ ...formData, role: value })}
+                                                >
+                                                    <SelectTrigger id="role">
+                                                        <SelectValue placeholder="Select a role" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="admin">Admin</SelectItem>
+                                                        <SelectItem value="encoder">Encoder</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <FieldError message={errors.role} />
                                             </div>
                                             <DialogFooter>
                                                 <Button type="submit" disabled={isAdding} className="w-full">
-                                                    {isAdding ? "Saving..." : "Save Course"}
+                                                    {isAdding ? "Saving..." : "Save User"}
                                                 </Button>
                                             </DialogFooter>
                                         </form>
                                     </DialogContent>
                                 </Dialog>
-                                {selectedCourses.length > 0 && (
+                                {selectedUsers.length > 0 && (
                                     <Button
                                         variant="destructive"
                                         size="sm"
@@ -268,7 +303,7 @@ export default function CoursesPage() {
                                             setDeleteModalOpen(true);
                                         }}
                                     >
-                                        Delete Selected ({selectedCourses.length})
+                                        Delete Selected ({selectedUsers.length})
                                     </Button>
                                 )}
                             </div>
@@ -278,22 +313,22 @@ export default function CoursesPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="w-[50px]">
+                                <TableHead className="w-12">
                                     <Checkbox
-                                        checked={selectedCourses.length === courses.length && courses.length > 0}
-                                        onCheckedChange={() =>
-                                            selectedCourses.length === courses.length
-                                                ? setSelectedCourses([])
-                                                : setSelectedCourses(courses.map((c) => c.id))
-                                        }
+                                        checked={selectedUsers.length === users.length && users.length > 0}
+                                        onCheckedChange={() => {
+                                            if (selectedUsers.length === users.length) setSelectedUsers([]);
+                                            else setSelectedUsers(users.map((u) => u.id));
+                                        }}
                                     />
                                 </TableHead>
-                                <TableHead>Course Code</TableHead>
-                                <TableHead>Course Name</TableHead>
-                                <TableHead>Description</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Role</TableHead>
+                                <TableHead>Created</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
+
                         <TableBody>
                             {loading ? (
                                 <TableRow>
@@ -301,55 +336,48 @@ export default function CoursesPage() {
                                         <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                                     </TableCell>
                                 </TableRow>
+                            ) : paginated.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                                        No users found
+                                    </TableCell>
+                                </TableRow>
                             ) : (
-                                paginated.map((course) => {
-                                    const isEditing = editingId === course.id;
+                                paginated.map((user) => {
+                                    const isEditing = editingId === user.id;
                                     return (
-                                        <TableRow key={course.id}>
+                                        <TableRow key={user.id}>
                                             <TableCell>
                                                 <Checkbox
-                                                    checked={selectedCourses.includes(course.id)}
-                                                    onCheckedChange={() => toggleSelect(course.id)}
+                                                    checked={selectedUsers.includes(user.id)}
+                                                    onCheckedChange={() => toggleSelect(user.id)}
                                                 />
                                             </TableCell>
+                                            <TableCell className="font-medium">{user.email}</TableCell>
                                             <TableCell>
                                                 {isEditing ? (
-                                                    <Input
-                                                        value={editData.code}
-                                                        onChange={(e) =>
-                                                            setEditData({ ...editData, code: e.target.value })
+                                                    <Select
+                                                        value={editData.role}
+                                                        onValueChange={(value) =>
+                                                            setEditData({ ...editData, role: value })
                                                         }
-                                                        className="h-8 w-24"
-                                                    />
+                                                    >
+                                                        <SelectTrigger className="w-32">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="admin">Admin</SelectItem>
+                                                            <SelectItem value="encoder">Encoder</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
                                                 ) : (
-                                                    course.code
+                                                    <span className="inline-block px-2 py-1 rounded-md text-sm font-medium bg-muted">
+                                                        {user.role === "admin" ? "🔑 Admin" : "✏️ Encoder"}
+                                                    </span>
                                                 )}
                                             </TableCell>
-                                            <TableCell>
-                                                {isEditing ? (
-                                                    <Input
-                                                        value={editData.name}
-                                                        onChange={(e) =>
-                                                            setEditData({ ...editData, name: e.target.value })
-                                                        }
-                                                        className="h-8"
-                                                    />
-                                                ) : (
-                                                    course.name
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {isEditing ? (
-                                                    <Input
-                                                        value={editData.description}
-                                                        onChange={(e) =>
-                                                            setEditData({ ...editData, description: e.target.value })
-                                                        }
-                                                        className="h-8"
-                                                    />
-                                                ) : (
-                                                    course.description
-                                                )}
+                                            <TableCell className="text-sm text-muted-foreground">
+                                                {new Date(user.createdAt).toLocaleDateString()}
                                             </TableCell>
                                             <TableCell className="text-right flex justify-end gap-2">
                                                 {isEditing ? (
@@ -357,7 +385,7 @@ export default function CoursesPage() {
                                                         <Button
                                                             size="icon"
                                                             variant="ghost"
-                                                            onClick={() => saveEdit(course.id)}
+                                                            onClick={() => saveEdit(user.id)}
                                                             disabled={isSaving}
                                                         >
                                                             {isSaving ? (
@@ -384,15 +412,12 @@ export default function CoursesPage() {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={() => startEdit(course)}>
+                                                            <DropdownMenuItem onClick={() => startEdit(user)}>
                                                                 <Pencil className="h-4 w-4 mr-2" />
                                                                 Edit
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem
-                                                                onClick={() => {
-                                                                    setDeleteTarget({ type: "single", id: course.id });
-                                                                    setDeleteModalOpen(true);
-                                                                }}
+                                                                onClick={() => handleDelete(user.id)}
                                                                 className="text-red-600"
                                                             >
                                                                 <Trash2 className="h-4 w-4 mr-2" />
@@ -419,7 +444,7 @@ export default function CoursesPage() {
                         >
                             Previous
                         </Button>
-                        <span className="flex items-center px-2 text-sm text-muted-foreground">
+                        <span className="flex items-center px-2">
                             Page {currentPage} of {totalPages || 1}
                         </span>
                         <Button
@@ -434,15 +459,15 @@ export default function CoursesPage() {
                 </CardContent>
             </Card>
 
-            {/* --- Delete Confirmation Modal --- */}
+            {/* Delete Confirmation Modal */}
             <DeleteConfirmDialog
                 open={deleteModalOpen}
                 onOpenChange={setDeleteModalOpen}
-                title="Delete Course"
+                title="Delete User"
                 description={
                     deleteTarget?.type === "bulk"
-                        ? `Are you sure you want to delete all ${selectedCourses.length} selected courses?`
-                        : "Are you sure you want to delete this course? This action cannot be undone."
+                        ? `Are you sure you want to delete all ${selectedUsers.length} selected users?`
+                        : "Are you sure you want to delete this user? This action cannot be undone."
                 }
                 onConfirm={handleDeleteConfirmed}
             />

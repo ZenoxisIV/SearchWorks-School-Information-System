@@ -174,7 +174,7 @@ export default function AuditLogsPage() {
 
             {/* Filters */}
             <Card>
-                <CardContent className="pt-6">
+                <CardContent>
                     <div className="space-y-4">
                         {/* Search Bar */}
                         <div>

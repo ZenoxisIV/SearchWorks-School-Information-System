@@ -5,41 +5,36 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { FieldError } from "@/components/form-error";
+import { toast } from "sonner";
+import { Loader2, Plus, Pencil, Check, X, Trash2, MoreHorizontal } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
-import { FieldError } from "@/components/form-error";
-import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Check, X, Trash2, MoreHorizontal } from "lucide-react";
-import { userSchema } from "@/lib/validations";
+import { courseSchema } from "@/lib/validations";
 
-export default function UsersPage() {
-    const [users, setUsers] = useState<any[]>([]);
+export default function CoursesPage() {
+    const [courses, setCourses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const [open, setOpen] = useState(false);
+    const [openAdd, setOpenAdd] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
-    const [formData, setFormData] = useState({
-        email: "",
-        password: "",
-        role: "encoder",
-    });
+    const [formData, setFormData] = useState({ code: "", name: "", description: "" });
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editData, setEditData] = useState<any>(null);
     const [isSaving, setIsSaving] = useState(false);
 
-    const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+    const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
     const [search, setSearch] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
@@ -49,22 +44,13 @@ export default function UsersPage() {
 
     const router = useRouter();
 
-    // --- Fetch Users ---
-    const fetchUsers = async () => {
+    const fetchCourses = async () => {
         try {
             setLoading(true);
-            const res = await fetch("/api/users", { credentials: "include" });
-            if (res.status === 401) {
-                router.push("/login");
-                return;
-            }
-            if (res.status === 403) {
-                toast.error("You do not have permission to access this page");
-                router.push("/students");
-                return;
-            }
+            const res = await fetch("/api/courses", { credentials: "include" });
+            if (res.status === 401) return router.push("/login");
             const data = await res.json();
-            if (Array.isArray(data)) setUsers(data);
+            if (Array.isArray(data)) setCourses(data);
         } catch {
             toast.error("Could not connect to the server");
         } finally {
@@ -73,37 +59,31 @@ export default function UsersPage() {
     };
 
     useEffect(() => {
-        fetchUsers();
+        fetchCourses();
     }, []);
 
-    // --- Inline Editing ---
-    const startEdit = (user: any) => {
-        setEditingId(user.id);
-        setEditData({ ...user });
+    const startEdit = (course: any) => {
+        setEditingId(course.id);
+        setEditData({ ...course });
     };
-
     const cancelEdit = () => {
         setEditingId(null);
         setEditData(null);
     };
-
-    const saveEdit = async (userId: string) => {
+    const saveEdit = async (id: string) => {
         setIsSaving(true);
         try {
-            const res = await fetch(`/api/users/${userId}`, {
+            const res = await fetch(`/api/courses/${id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ role: editData.role }),
+                body: JSON.stringify(editData),
                 credentials: "include",
             });
             if (res.ok) {
-                toast.success("User updated successfully");
+                toast.success("Course updated");
                 setEditingId(null);
-                fetchUsers();
-            } else {
-                const err = await res.json();
-                toast.error(err.message || "Update failed");
-            }
+                fetchCourses();
+            } else toast.error("Update failed");
         } catch {
             toast.error("Error saving changes");
         } finally {
@@ -111,13 +91,12 @@ export default function UsersPage() {
         }
     };
 
-    // --- Add User ---
-    const handleAddUser = async (e: React.SubmitEvent) => {
+    const handleAddCourse = async (e: React.SubmitEvent) => {
         e.preventDefault();
         setErrors({});
 
         // Validate with Zod schema
-        const result = userSchema.safeParse(formData);
+        const result = courseSchema.safeParse(formData);
         if (!result.success) {
             const fieldErrors: Record<string, string> = {};
             result.error.issues.forEach((issue: any) => {
@@ -130,21 +109,21 @@ export default function UsersPage() {
 
         setIsAdding(true);
         try {
-            const res = await fetch("/api/users", {
+            const res = await fetch("/api/courses", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formData),
                 credentials: "include",
             });
             if (res.ok) {
-                toast.success("User added successfully");
-                setOpen(false);
-                setFormData({ email: "", password: "", role: "encoder" });
+                toast.success("Course added");
+                setOpenAdd(false);
+                setFormData({ code: "", name: "", description: "" });
                 setErrors({});
-                fetchUsers();
+                fetchCourses();
             } else {
                 const err = await res.json();
-                toast.error(err.message || "Failed to add user");
+                toast.error(err.message || "Failed to add course");
             }
         } catch {
             toast.error("An error occurred");
@@ -153,148 +132,134 @@ export default function UsersPage() {
         }
     };
 
-    // --- Delete User ---
-    const handleDelete = async (userId: string) => {
-        setDeleteTarget({ type: "single", id: userId });
-        setDeleteModalOpen(true);
-    };
-
     const handleDeleteConfirmed = async () => {
         if (!deleteTarget) return;
 
         try {
             if (deleteTarget.type === "single" && deleteTarget.id) {
-                const res = await fetch(`/api/users/${deleteTarget.id}`, {
+                const res = await fetch(`/api/courses/${deleteTarget.id}`, {
                     method: "DELETE",
                     credentials: "include",
                 });
-                if (res.ok) {
-                    toast.success("User deleted");
-                } else {
+                if (res.ok) toast.success("Course deleted");
+                else {
                     const err = await res.json();
-                    toast.error(err.message || "Failed to delete user");
+                    toast.error(err.message || "Failed to delete");
                 }
             } else if (deleteTarget.type === "bulk") {
-                const res = await fetch("/api/users", {
+                const res = await fetch("/api/courses", {
                     method: "DELETE",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ userIds: selectedUsers }),
+                    body: JSON.stringify({ ids: selectedCourses }),
                     credentials: "include",
                 });
                 if (res.ok) {
-                    toast.success("Selected users deleted");
-                    setSelectedUsers([]);
+                    toast.success("Selected courses deleted");
+                    setSelectedCourses([]);
                 } else {
                     const err = await res.json();
-                    toast.error(err.message || "Failed to delete users");
+                    toast.error(err.message || "Failed to delete");
                 }
             }
         } catch {
             toast.error("An error occurred");
         } finally {
-            fetchUsers();
+            fetchCourses();
             setDeleteModalOpen(false);
             setDeleteTarget(null);
         }
     };
 
-    // --- Bulk Delete / Selection ---
-    const toggleSelect = (userId: string) => {
-        setSelectedUsers((prev) => (prev.includes(userId) ? prev.filter((s) => s !== userId) : [...prev, userId]));
+    const toggleSelect = (id: string) => {
+        setSelectedCourses((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
     };
 
-    const filteredUsers = users.filter((user) => {
-        const values = [user.email, user.role];
-        return values.some((v) => v?.toString().toLowerCase().includes(search.toLowerCase()));
-    });
+    const filteredCourses = courses.filter((course) =>
+        [course.code, course.name, course.description].some((v) => v?.toLowerCase().includes(search.toLowerCase())),
+    );
 
-    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-    const paginated = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    const totalPages = Math.ceil(filteredCourses.length / itemsPerPage);
+    const paginated = filteredCourses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     return (
         <div className="space-y-6 p-6">
             {/* Header */}
             <div>
-                <h2 className="text-3xl font-bold tracking-tight">Users</h2>
-                <p className="text-muted-foreground">Manage admin and encoder accounts.</p>
+                <h2 className="text-3xl font-bold tracking-tight">Courses</h2>
+                <p className="text-muted-foreground">Manage all courses and curriculum details.</p>
             </div>
 
             {/* Table */}
             <Card>
-                <CardContent className="pt-6">
-                    {/* Search and Controls */}
+                <CardContent>
+                    {/* Search and Filter Controls */}
                     <div className="space-y-4 mb-6">
                         <div className="flex flex-col sm:flex-row gap-3 items-end">
                             <div className="w-64">
                                 <Input
-                                    placeholder="Search..."
+                                    placeholder="Search by code, name, or description..."
                                     value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
+                                    onChange={(e) => {
+                                        setSearch(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
                                 />
                             </div>
                             <div className="flex gap-2 ml-auto">
-                                <Dialog open={open} onOpenChange={setOpen}>
+                                <Dialog open={openAdd} onOpenChange={setOpenAdd}>
                                     <DialogTrigger asChild>
                                         <Button size="sm" className="gap-2">
-                                            <Plus className="h-4 w-4" /> Add User
+                                            <Plus className="h-4 w-4" />
+                                            Add Course
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent>
                                         <DialogHeader>
-                                            <DialogTitle>Add New User</DialogTitle>
+                                            <DialogTitle>Add New Course</DialogTitle>
                                         </DialogHeader>
-                                        <form onSubmit={handleAddUser} className="space-y-4 py-4">
+                                        <form onSubmit={handleAddCourse} className="space-y-4 py-4">
                                             <div className="space-y-2">
-                                                <Label htmlFor="email">Email</Label>
+                                                <Label htmlFor="code">Course Code</Label>
                                                 <Input
-                                                    id="email"
-                                                    type="email"
-                                                    value={formData.email}
-                                                    onChange={(e) =>
-                                                        setFormData({ ...formData, email: e.target.value })
-                                                    }
+                                                    id="code"
+                                                    placeholder="CS101"
+                                                    value={formData.code}
+                                                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                                                     required
                                                 />
-                                                <FieldError message={errors.email} />
+                                                <FieldError message={errors.code} />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label htmlFor="password">Password</Label>
+                                                <Label htmlFor="name">Course Name</Label>
                                                 <Input
-                                                    id="password"
-                                                    type="password"
-                                                    value={formData.password}
-                                                    onChange={(e) =>
-                                                        setFormData({ ...formData, password: e.target.value })
-                                                    }
+                                                    id="name"
+                                                    placeholder="Intro to CS"
+                                                    value={formData.name}
+                                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                                     required
                                                 />
-                                                <FieldError message={errors.password} />
+                                                <FieldError message={errors.name} />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label htmlFor="role">Role</Label>
-                                                <Select
-                                                    value={formData.role}
-                                                    onValueChange={(value) => setFormData({ ...formData, role: value })}
-                                                >
-                                                    <SelectTrigger id="role">
-                                                        <SelectValue placeholder="Select a role" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="admin">Admin</SelectItem>
-                                                        <SelectItem value="encoder">Encoder</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <FieldError message={errors.role} />
+                                                <Label htmlFor="description">Description</Label>
+                                                <Input
+                                                    id="description"
+                                                    value={formData.description}
+                                                    onChange={(e) =>
+                                                        setFormData({ ...formData, description: e.target.value })
+                                                    }
+                                                />
+                                                <FieldError message={errors.description} />
                                             </div>
                                             <DialogFooter>
                                                 <Button type="submit" disabled={isAdding} className="w-full">
-                                                    {isAdding ? "Saving..." : "Save User"}
+                                                    {isAdding ? "Saving..." : "Save Course"}
                                                 </Button>
                                             </DialogFooter>
                                         </form>
                                     </DialogContent>
                                 </Dialog>
-                                {selectedUsers.length > 0 && (
+                                {selectedCourses.length > 0 && (
                                     <Button
                                         variant="destructive"
                                         size="sm"
@@ -303,7 +268,7 @@ export default function UsersPage() {
                                             setDeleteModalOpen(true);
                                         }}
                                     >
-                                        Delete Selected ({selectedUsers.length})
+                                        Delete Selected ({selectedCourses.length})
                                     </Button>
                                 )}
                             </div>
@@ -313,22 +278,22 @@ export default function UsersPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="w-12">
+                                <TableHead className="w-[50px]">
                                     <Checkbox
-                                        checked={selectedUsers.length === users.length && users.length > 0}
-                                        onCheckedChange={() => {
-                                            if (selectedUsers.length === users.length) setSelectedUsers([]);
-                                            else setSelectedUsers(users.map((u) => u.id));
-                                        }}
+                                        checked={selectedCourses.length === courses.length && courses.length > 0}
+                                        onCheckedChange={() =>
+                                            selectedCourses.length === courses.length
+                                                ? setSelectedCourses([])
+                                                : setSelectedCourses(courses.map((c) => c.id))
+                                        }
                                     />
                                 </TableHead>
-                                <TableHead>Email</TableHead>
-                                <TableHead>Role</TableHead>
-                                <TableHead>Created</TableHead>
+                                <TableHead>Course Code</TableHead>
+                                <TableHead>Course Name</TableHead>
+                                <TableHead>Description</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
-
                         <TableBody>
                             {loading ? (
                                 <TableRow>
@@ -336,48 +301,55 @@ export default function UsersPage() {
                                         <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                                     </TableCell>
                                 </TableRow>
-                            ) : paginated.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                                        No users found
-                                    </TableCell>
-                                </TableRow>
                             ) : (
-                                paginated.map((user) => {
-                                    const isEditing = editingId === user.id;
+                                paginated.map((course) => {
+                                    const isEditing = editingId === course.id;
                                     return (
-                                        <TableRow key={user.id}>
+                                        <TableRow key={course.id}>
                                             <TableCell>
                                                 <Checkbox
-                                                    checked={selectedUsers.includes(user.id)}
-                                                    onCheckedChange={() => toggleSelect(user.id)}
+                                                    checked={selectedCourses.includes(course.id)}
+                                                    onCheckedChange={() => toggleSelect(course.id)}
                                                 />
                                             </TableCell>
-                                            <TableCell className="font-medium">{user.email}</TableCell>
                                             <TableCell>
                                                 {isEditing ? (
-                                                    <Select
-                                                        value={editData.role}
-                                                        onValueChange={(value) =>
-                                                            setEditData({ ...editData, role: value })
+                                                    <Input
+                                                        value={editData.code}
+                                                        onChange={(e) =>
+                                                            setEditData({ ...editData, code: e.target.value })
                                                         }
-                                                    >
-                                                        <SelectTrigger className="w-32">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="admin">Admin</SelectItem>
-                                                            <SelectItem value="encoder">Encoder</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
+                                                        className="h-8 w-24"
+                                                    />
                                                 ) : (
-                                                    <span className="inline-block px-2 py-1 rounded-md text-sm font-medium bg-muted">
-                                                        {user.role === "admin" ? "🔑 Admin" : "✏️ Encoder"}
-                                                    </span>
+                                                    course.code
                                                 )}
                                             </TableCell>
-                                            <TableCell className="text-sm text-muted-foreground">
-                                                {new Date(user.createdAt).toLocaleDateString()}
+                                            <TableCell>
+                                                {isEditing ? (
+                                                    <Input
+                                                        value={editData.name}
+                                                        onChange={(e) =>
+                                                            setEditData({ ...editData, name: e.target.value })
+                                                        }
+                                                        className="h-8"
+                                                    />
+                                                ) : (
+                                                    course.name
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                {isEditing ? (
+                                                    <Input
+                                                        value={editData.description}
+                                                        onChange={(e) =>
+                                                            setEditData({ ...editData, description: e.target.value })
+                                                        }
+                                                        className="h-8"
+                                                    />
+                                                ) : (
+                                                    course.description
+                                                )}
                                             </TableCell>
                                             <TableCell className="text-right flex justify-end gap-2">
                                                 {isEditing ? (
@@ -385,7 +357,7 @@ export default function UsersPage() {
                                                         <Button
                                                             size="icon"
                                                             variant="ghost"
-                                                            onClick={() => saveEdit(user.id)}
+                                                            onClick={() => saveEdit(course.id)}
                                                             disabled={isSaving}
                                                         >
                                                             {isSaving ? (
@@ -412,12 +384,15 @@ export default function UsersPage() {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={() => startEdit(user)}>
+                                                            <DropdownMenuItem onClick={() => startEdit(course)}>
                                                                 <Pencil className="h-4 w-4 mr-2" />
                                                                 Edit
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem
-                                                                onClick={() => handleDelete(user.id)}
+                                                                onClick={() => {
+                                                                    setDeleteTarget({ type: "single", id: course.id });
+                                                                    setDeleteModalOpen(true);
+                                                                }}
                                                                 className="text-red-600"
                                                             >
                                                                 <Trash2 className="h-4 w-4 mr-2" />
@@ -444,7 +419,7 @@ export default function UsersPage() {
                         >
                             Previous
                         </Button>
-                        <span className="flex items-center px-2">
+                        <span className="flex items-center px-2 text-sm text-muted-foreground">
                             Page {currentPage} of {totalPages || 1}
                         </span>
                         <Button
@@ -459,15 +434,15 @@ export default function UsersPage() {
                 </CardContent>
             </Card>
 
-            {/* Delete Confirmation Modal */}
+            {/* --- Delete Confirmation Modal --- */}
             <DeleteConfirmDialog
                 open={deleteModalOpen}
                 onOpenChange={setDeleteModalOpen}
-                title="Delete User"
+                title="Delete Course"
                 description={
                     deleteTarget?.type === "bulk"
-                        ? `Are you sure you want to delete all ${selectedUsers.length} selected users?`
-                        : "Are you sure you want to delete this user? This action cannot be undone."
+                        ? `Are you sure you want to delete all ${selectedCourses.length} selected courses?`
+                        : "Are you sure you want to delete this course? This action cannot be undone."
                 }
                 onConfirm={handleDeleteConfirmed}
             />

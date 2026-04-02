@@ -1,36 +1,127 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+SearchWorks - School Information System
+=====================================
 
-## Getting Started
+Overview
+--------
+SearchWorks is a small school information system built with Next.js (App Router), Fastify (server routes), Drizzle ORM, and Neon.
 
-First, run the development server:
+Setup
+-----
+1. Prerequisites
+   - Node.js 18+ (recommended)
+   - pnpm
+   - A Postgres-compatible database (Neon or PostgreSQL)
+
+2. Clone and install
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repo-url>
+cd SearchWorks-School-Information-System/sw-sis-app
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Environment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Create a `.env` file at the repository root (this repo ignores `.env*` in git). Required environment variables:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+DATABASE_URL=postgresql://user:password@host:port/dbname
+JWT_SECRET=<long-random-secret-at-least-32-chars>
+COOKIE_SECRET=<optional; fallback to JWT_SECRET if not provided>
+NODE_ENV=development
+```
 
-## Learn More
+4. Database
 
-To learn more about Next.js, take a look at the following resources:
+- Generate and push schema (if you use Drizzle migrations / generate):
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm db:generate   # generates migration / types (drizzle-kit)
+pnpm db:push       # push migrations to the database (drizzle-kit)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+5. Seed data
 
-## Deploy on Vercel
+- The repository includes a seed script at `db/seed.ts`. Run:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+pnpm db:seed
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This script inserts an admin user, example courses, subjects, prerequisites, and 50 students.
+
+6. Run the app
+
+```bash
+pnpm run dev
+```
+
+Env vars (summary)
+------------------
+- `DATABASE_URL` (required): connection string for the database used by Drizzle.
+- `JWT_SECRET` (required): secret used to sign JWT tokens. Must be set and preferably >= 32 characters in production.
+- `COOKIE_SECRET` (optional): cookie signing secret. If omitted, `JWT_SECRET` is used.
+- `NODE_ENV` (optional): `development` or `production`.
+
+Seed instructions (details)
+-------------------------
+- Script location: `db/seed.ts`.
+- How to run: `pnpm db:seed` (the script uses `tsx` and will load `.env` automatically per the `package.json` script).
+- What it creates:
+  - Admin user: `admin@searchworks.edu.ph` / password `admin123`
+  - 5 courses and 15 subjects (3 per course)
+  - Several prerequisite relations
+  - 50 students distributed across the courses
+
+Admin credentials
+-----------------
+- Email: `admin@searchworks.edu.ph`
+- Password: `admin123`
+
+Key assumptions and validation rules
+-----------------------------------
+
+- How prerequisites are considered “taken/passed”
+  - A prerequisite subject is considered "taken and passed" only when there is a `grades` record for that student & subject where the `remarks` column equals `PASSED`.
+  - The prerequisite checker is implemented in `lib/routes/utils.ts` (function `checkPrerequisites`) and uses `remarks === "PASSED"` to determine passing.
+
+- Passing grade threshold / remarks rule
+  - Final grade computation uses a weighted average by default: Prelim 20%, Midterm 30%, Finals 50%.
+  - The computed weighted average is rounded to the nearest 0.25 increment (Math.round(value * 4) / 4).
+  - Mapping to `remarks`:
+    - `PASSED` if final grade <= 3.0
+    - `FAILED` if final grade > 3.0
+  - Implementation: `lib/grades.ts` (`calculateFinalGrade` and `calculateSimpleAverage`).
+
+- Reservation behavior when missing prerequisites (error format)
+  - When attempting to create a reservation via `POST /api/reservations`, the server verifies that the student belongs to the same course and that all prerequisites are satisfied.
+  - If prerequisites are missing, the response is HTTP 400 with JSON body:
+
+```json
+{ "message": "Missing prerequisites: [CODE1, CODE2]" }
+```
+
+  - If the student and subject courses don't match, the response is HTTP 400 with `{ "message": "Subject doesn't match student's course." }`.
+  - If the reservation already exists, the server responds with HTTP 400 and `{ "message": "Already reserved." }`.
+
+Seed scripts
+------------
+- Primary seed entrypoint: `db/seed.ts` (runs with `pnpm db:seed`).
+- The seed script performs the following major steps:
+  1. Creates an admin user (email and password printed to console).
+  2. Inserts courses.
+  3. Inserts subjects and links them to courses.
+  4. Inserts subject prerequisite relationships.
+  5. Inserts a set of example students.
+
+Code references
+---------------
+- Prerequisite checking: `lib/routes/utils.ts`
+- Grade calculation: `lib/grades.ts`
+- Seed script: `db/seed.ts`
+- Reservation endpoints: `lib/routes/reservations.ts`
+
+License
+-------
+See repository `LICENSE`.
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).

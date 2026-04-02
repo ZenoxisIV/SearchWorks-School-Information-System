@@ -21,8 +21,9 @@ export const metadata: Metadata = {
     description: "Official School Information System for managing students, grades, and courses.",
     keywords: ["school", "information system", "student management", "grades", "courses"],
     authors: [{ name: "Ivan Cadiang", url: "https://github.com/ZenoxisIV" }],
-    viewport: "width=device-width, initial-scale=1",
 };
+
+export const viewport = "width=device-width, initial-scale=1";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (

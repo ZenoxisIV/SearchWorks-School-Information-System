@@ -167,7 +167,7 @@ export default function SubjectsPage() {
 
             {/* Table */}
             <Card>
-                <CardContent className="pt-6">
+                <CardContent>
                     {/* Search and Filter Controls */}
                     <div className="space-y-4 mb-6">
                         <div className="flex flex-col sm:flex-row gap-3 items-end">
@@ -226,8 +226,8 @@ export default function SubjectsPage() {
                         <DialogTitle>Add Subject</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleAdd} className="space-y-4">
-                        <div>
-                            <Label>Code</Label>
+                        <div className="space-y-2">
+                            <Label>Subject Code</Label>
                             <Input
                                 required
                                 value={formData.code}
@@ -235,8 +235,8 @@ export default function SubjectsPage() {
                             />
                             <FieldError message={errors.code} />
                         </div>
-                        <div>
-                            <Label>Title</Label>
+                        <div className="space-y-2">
+                            <Label>Subject Name</Label>
                             <Input
                                 required
                                 value={formData.title}
@@ -244,7 +244,7 @@ export default function SubjectsPage() {
                             />
                             <FieldError message={errors.title} />
                         </div>
-                        <div>
+                        <div className="space-y-2">
                             <Label>Units</Label>
                             <Input
                                 type="number"
@@ -254,7 +254,7 @@ export default function SubjectsPage() {
                             />
                             <FieldError message={errors.units} />
                         </div>
-                        <div>
+                        <div className="space-y-2">
                             <Label>Course</Label>
                             <Select value={formData.courseId} onValueChange={(val) => setFormData({ ...formData, courseId: val })}>
                                 <SelectTrigger>
@@ -300,8 +300,8 @@ export default function SubjectsPage() {
                                         }
                                     />
                                 </TableHead>
-                                <TableHead>Code</TableHead>
-                                <TableHead>Title</TableHead>
+                                <TableHead>Subject Code</TableHead>
+                                <TableHead>Subject Name</TableHead>
                                 <TableHead>Course Code</TableHead>
                                 <TableHead>Units</TableHead>
                                 <TableHead className="text-right w-32">Actions</TableHead>

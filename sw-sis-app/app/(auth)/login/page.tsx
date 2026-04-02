@@ -93,7 +93,7 @@ export default function LoginPage() {
                                     placeholder="faculty@searchworks.edu"
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    className={errors.email ? "border-destructive pl-0" : "pl-0"}
+                                    className={errors.email ? "border-destructive pl-2" : "pl-2"}
                                 />
                             </div>
                             <FieldError message={errors.email} />

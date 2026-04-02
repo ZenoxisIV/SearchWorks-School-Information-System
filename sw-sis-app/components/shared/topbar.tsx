@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LogOut } from "lucide-react";
@@ -17,6 +18,29 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 export function Topbar() {
     const router = useRouter();
+    const [email, setEmail] = React.useState<string | null>(null);
+
+    React.useEffect(() => {
+        let mounted = true;
+        (async () => {
+            try {
+                const res = await fetch("/api/auth/me", { credentials: "include" });
+                if (!mounted) return;
+                if (res.ok) {
+                    const data = await res.json();
+                    setEmail(data.user?.email ?? null);
+                } else {
+                    setEmail(null);
+                }
+            } catch (e) {
+                setEmail(null);
+            }
+        })();
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
 
     const handleLogout = async () => {
         try {
@@ -30,7 +54,6 @@ export function Topbar() {
                 toast.success("Logged out successfully");
 
                 router.push("/login");
-                router.refresh();
             } else {
                 throw new Error("Logout failed");
             }
@@ -45,12 +68,12 @@ export function Topbar() {
                 <ThemeToggle />
 
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                        <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="relative h-9 w-9 rounded-full hover:bg-muted">
                             <Avatar className="h-8 w-8">
-                                <AvatarImage src="/avatar.png" alt="User" />
+                                <AvatarImage src="/avatar.png" alt={email ?? "User"} />
                                 <AvatarFallback className="bg-primary text-primary-foreground font-medium text-xs">
-                                    JD
+                                    {email ? email.charAt(0).toUpperCase() : "U"}
                                 </AvatarFallback>
                             </Avatar>
                         </Button>
@@ -58,24 +81,12 @@ export function Topbar() {
 
                     <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuLabel className="font-normal">
-                            <div className="flex flex-col space-y-1">
-                                <p className="text-sm font-medium leading-none">John Doe</p>
-                                <p className="text-xs leading-none text-muted-foreground">john.doe@example.com</p>
+                            <div className="flex flex-col">
+                                <p className="text-xs leading-none text-muted-foreground">{email ?? ""}</p>
                             </div>
                         </DropdownMenuLabel>
 
                         <DropdownMenuSeparator />
-
-                        {/* <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
-            </DropdownMenuItem>
-            
-            <DropdownMenuSeparator /> */}
 
                         <DropdownMenuItem
                             className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"

@@ -297,7 +297,7 @@ export default function StudentsPage() {
 
             {/* Table */}
             <Card>
-                <CardContent className="pt-6">
+                <CardContent>
                     {/* Search and Filters - Inside Table */}
                     <div className="space-y-4 mb-6">
                         <div className="flex flex-col sm:flex-row gap-3 items-end">

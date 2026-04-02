@@ -1,14 +1,11 @@
-SearchWorks - School Information System
-=====================================
-
 Overview
 --------
-SearchWorks is a small school information system built with Next.js (App Router), Fastify (server routes), Drizzle ORM, and Neon.
+SearchWorks is a small school information system built with [Next.js](https://nextjs.org/) (App Router), [Fastify](https://fastify.dev/) (server routes), [Drizzle ORM](https://orm.drizzle.team/), and [Neon](https://neon.com/).
 
 Setup
 -----
 1. Prerequisites
-   - Node.js 18+ (recommended)
+   - [Node.js](https://nodejs.org/en/download) 18+ (recommended)
    - pnpm
    - A Postgres-compatible database (Neon or PostgreSQL)
 
@@ -36,8 +33,8 @@ NODE_ENV=development
 - Generate and push schema (if you use Drizzle migrations / generate):
 
 ```bash
-pnpm db:generate   # generates migration / types (drizzle-kit)
-pnpm db:push       # push migrations to the database (drizzle-kit)
+pnpm run db:generate   # generates migration / types (drizzle-kit)
+pnpm run db:push       # push migrations to the database (drizzle-kit)
 ```
 
 5. Seed data
@@ -45,7 +42,7 @@ pnpm db:push       # push migrations to the database (drizzle-kit)
 - The repository includes a seed script at `db/seed.ts`. Run:
 
 ```bash
-pnpm db:seed
+pnpm run db:seed
 ```
 
 This script inserts an admin user, example courses, subjects, prerequisites, and 50 students.
@@ -56,14 +53,14 @@ This script inserts an admin user, example courses, subjects, prerequisites, and
 pnpm run dev
 ```
 
-Env vars (summary)
+Environment Variables
 ------------------
 - `DATABASE_URL` (required): connection string for the database used by Drizzle.
 - `JWT_SECRET` (required): secret used to sign JWT tokens. Must be set and preferably >= 32 characters in production.
 - `COOKIE_SECRET` (optional): cookie signing secret. If omitted, `JWT_SECRET` is used.
 - `NODE_ENV` (optional): `development` or `production`.
 
-Seed instructions (details)
+Seed Instructions
 -------------------------
 - Script location: `db/seed.ts`.
 - How to run: `pnpm db:seed` (the script uses `tsx` and will load `.env` automatically per the `package.json` script).
@@ -73,12 +70,12 @@ Seed instructions (details)
   - Several prerequisite relations
   - 50 students distributed across the courses
 
-Admin credentials
+Admin Credentials
 -----------------
 - Email: `admin@searchworks.edu.ph`
 - Password: `admin123`
 
-Key assumptions and validation rules
+Key Assumptions and Validation Rules
 -----------------------------------
 
 - How prerequisites are considered “taken/passed”
@@ -104,7 +101,7 @@ Key assumptions and validation rules
   - If the student and subject courses don't match, the response is HTTP 400 with `{ "message": "Subject doesn't match student's course." }`.
   - If the reservation already exists, the server responds with HTTP 400 and `{ "message": "Already reserved." }`.
 
-Seed scripts
+Seed Scripts
 ------------
 - Primary seed entrypoint: `db/seed.ts` (runs with `pnpm db:seed`).
 - The seed script performs the following major steps:
@@ -114,12 +111,16 @@ Seed scripts
   4. Inserts subject prerequisite relationships.
   5. Inserts a set of example students.
 
-Code references
+Code References
 ---------------
 - Prerequisite checking: `lib/routes/utils.ts`
 - Grade calculation: `lib/grades.ts`
 - Seed script: `db/seed.ts`
 - Reservation endpoints: `lib/routes/reservations.ts`
+
+Video Demo
+---------------
+See the demo through this [YouTube]() link.
 
 License
 -------

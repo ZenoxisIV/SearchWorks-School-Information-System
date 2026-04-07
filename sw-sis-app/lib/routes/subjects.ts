@@ -27,7 +27,7 @@ export async function subjectsRoutes(app: FastifyInstance) {
                     code: body.code,
                     title: body.title,
                     units: Number(body.units),
-                    courseId: "4d68eef9-2ace-4340-a1a1-f08ce65603f9", // ! Note: Hardcoded Course ID for now
+                    courseId: body.courseId,
                 })
                 .returning();
 

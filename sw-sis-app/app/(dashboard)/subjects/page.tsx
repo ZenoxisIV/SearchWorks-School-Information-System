@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { FieldError } from "@/components/form-error";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Check, X, Trash2, MoreHorizontal } from "lucide-react";
+import { Loader2, Plus, Pencil, Check, X, Trash2, MoreHorizontal, FilePenLine } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -40,6 +40,12 @@ export default function SubjectsPage() {
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<null | { type: "single" | "bulk"; id?: string }>(null);
+
+    const [prereqDialogOpen, setPrereqDialogOpen] = useState(false);
+    const [activeSubject, setActiveSubject] = useState<any>(null);
+    const [prerequisites, setPrerequisites] = useState<any[]>([]);
+    const [loadingPrereqs, setLoadingPrereqs] = useState(false);
+    const [newPrereqId, setNewPrereqId] = useState("");
 
     const fetchSubjects = async () => {
         setLoading(true);
@@ -70,11 +76,59 @@ export default function SubjectsPage() {
         fetchCourses();
     }, []);
 
-    const handleAdd = async (e: React.SubmitEvent) => {
+    const fetchPrerequisites = async (subjectId: string) => {
+        setLoadingPrereqs(true);
+        try {
+            const res = await fetch(`/api/subjects/${subjectId}/prerequisites`);
+            if (res.ok) setPrerequisites(await res.json());
+        } catch {
+            toast.error("Failed to load prerequisites");
+        } finally {
+            setLoadingPrereqs(false);
+        }
+    };
+
+    const handleAddPrerequisite = async () => {
+        if (!newPrereqId || !activeSubject) return;
+
+        try {
+            const res = await fetch(`/api/subjects/${activeSubject.id}/prerequisites`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prerequisiteSubjectId: newPrereqId }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.message || "Failed to add prerequisite");
+            }
+
+            toast.success("Prerequisite added");
+            setNewPrereqId("");
+            fetchPrerequisites(activeSubject.id);
+        } catch (err: any) {
+            toast.error(err.message);
+        }
+    };
+
+    const handleDeletePrerequisite = async (prereqId: string) => {
+        try {
+            const res = await fetch(`/api/subjects/${activeSubject.id}/prerequisites/${prereqId}`, {
+                method: "DELETE",
+            });
+            if (!res.ok) throw new Error("Failed to remove prerequisite");
+            toast.success("Prerequisite removed");
+            fetchPrerequisites(activeSubject.id);
+        } catch (err: any) {
+            toast.error(err.message);
+        }
+    };
+
+    const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
         setErrors({});
 
-        // Validate with Zod schema
         const result = subjectSchema.safeParse(formData);
         if (!result.success) {
             const fieldErrors: Record<string, string> = {};
@@ -116,7 +170,7 @@ export default function SubjectsPage() {
                 credentials: "include",
             });
             if (!res.ok) throw new Error("Update failed");
-            toast.success("Updated");
+            toast.success("Updated successfully");
             setEditingId(null);
             fetchSubjects();
         } catch (err: any) {
@@ -137,7 +191,7 @@ export default function SubjectsPage() {
                 credentials: "include",
             });
             if (!res.ok) throw new Error("Delete failed");
-            toast.success("Deleted");
+            toast.success("Deleted successfully");
             fetchSubjects();
         } catch (err: any) {
             toast.error(err.message);
@@ -165,10 +219,8 @@ export default function SubjectsPage() {
                 <p className="text-muted-foreground text-sm">Manage academic subjects and unit credits.</p>
             </div>
 
-            {/* Table */}
             <Card>
                 <CardContent>
-                    {/* Search and Filter Controls */}
                     <div className="space-y-4 mb-6">
                         <div className="flex flex-col sm:flex-row gap-3 items-end">
                             <div className="flex flex-col sm:flex-row gap-3 items-end">
@@ -183,10 +235,13 @@ export default function SubjectsPage() {
                                     />
                                 </div>
                                 <div className="w-48 flex gap-2">
-                                    <Select value={selectedCourse} onValueChange={(val) => {
-                                        setSelectedCourse(val);
-                                        setCurrentPage(1);
-                                    }}>
+                                    <Select
+                                        value={selectedCourse}
+                                        onValueChange={(val) => {
+                                            setSelectedCourse(val);
+                                            setCurrentPage(1);
+                                        }}
+                                    >
                                         <SelectTrigger>
                                             <SelectValue placeholder="All courses" />
                                         </SelectTrigger>
@@ -222,59 +277,66 @@ export default function SubjectsPage() {
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Add Subject</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleAdd} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label>Subject Code</Label>
-                            <Input
-                                required
-                                value={formData.code}
-                                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                            />
-                            <FieldError message={errors.code} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Subject Name</Label>
-                            <Input
-                                required
-                                value={formData.title}
-                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                            />
-                            <FieldError message={errors.title} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Units</Label>
-                            <Input
-                                type="number"
-                                required
-                                value={formData.units}
-                                onChange={(e) => setFormData({ ...formData, units: e.target.value })}
-                            />
-                            <FieldError message={errors.units} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Course</Label>
-                            <Select value={formData.courseId} onValueChange={(val) => setFormData({ ...formData, courseId: val })}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select course" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {courses.map((c) => (
-                                        <SelectItem key={c.id} value={c.id}>
-                                            {c.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <FieldError message={errors.courseId} />
-                        </div>
-                        <Button type="submit" className="w-full" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="animate-spin" /> : "Save"}
-                        </Button>
-                    </form>
-                </DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Add Subject</DialogTitle>
+                                        </DialogHeader>
+                                        <form onSubmit={handleAdd} className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label>Subject Code</Label>
+                                                <Input
+                                                    required
+                                                    value={formData.code}
+                                                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                                                />
+                                                <FieldError message={errors.code} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Subject Name</Label>
+                                                <Input
+                                                    required
+                                                    value={formData.title}
+                                                    onChange={(e) =>
+                                                        setFormData({ ...formData, title: e.target.value })
+                                                    }
+                                                />
+                                                <FieldError message={errors.title} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Units</Label>
+                                                <Input
+                                                    type="number"
+                                                    required
+                                                    value={formData.units}
+                                                    onChange={(e) =>
+                                                        setFormData({ ...formData, units: e.target.value })
+                                                    }
+                                                />
+                                                <FieldError message={errors.units} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Course</Label>
+                                                <Select
+                                                    value={formData.courseId}
+                                                    onValueChange={(val) => setFormData({ ...formData, courseId: val })}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select course" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {courses.map((c) => (
+                                                            <SelectItem key={c.id} value={c.id}>
+                                                                {c.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FieldError message={errors.courseId} />
+                                            </div>
+                                            <Button type="submit" className="w-full" disabled={isSubmitting}>
+                                                {isSubmitting ? <Loader2 className="animate-spin" /> : "Save"}
+                                            </Button>
+                                        </form>
+                                    </DialogContent>
                                 </Dialog>
                                 {selected.length > 0 && (
                                     <Button
@@ -363,17 +425,13 @@ export default function SubjectsPage() {
                                                     s.title
                                                 )}
                                             </TableCell>
+
                                             <TableCell>
-                                                {editing ? (
-                                                    <Input
-                                                        className="h-8"
-                                                        value={editData.courseId}
-                                                        disabled
-                                                    />
-                                                ) : (
-                                                    courses.find((c) => c.id === s.courseId)?.code || "-"
-                                                )}
+                                                <span className={editing ? "text-muted-foreground opacity-70" : ""}>
+                                                    {courses.find((c) => c.id === s.courseId)?.code || "-"}
+                                                </span>
                                             </TableCell>
+
                                             <TableCell>
                                                 {editing ? (
                                                     <Input
@@ -409,11 +467,7 @@ export default function SubjectsPage() {
                                                 ) : (
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button
-                                                                size="icon"
-                                                                variant="ghost"
-                                                                title="More actions"
-                                                            >
+                                                            <Button size="icon" variant="ghost">
                                                                 <MoreHorizontal className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
@@ -426,6 +480,16 @@ export default function SubjectsPage() {
                                                             >
                                                                 <Pencil className="h-4 w-4 mr-2" />
                                                                 Edit
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                onClick={() => {
+                                                                    setActiveSubject(s);
+                                                                    setPrereqDialogOpen(true);
+                                                                    fetchPrerequisites(s.id);
+                                                                }}
+                                                            >
+                                                                <FilePenLine className="h-4 w-4 mr-2" />
+                                                                Prerequisites
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem
                                                                 onClick={() => confirmDelete(s.id)}
@@ -445,7 +509,6 @@ export default function SubjectsPage() {
                         </TableBody>
                     </Table>
 
-                    {/* Pagination */}
                     <div className="p-4 flex items-center justify-end space-x-2 border-t">
                         <Button
                             variant="outline"
@@ -470,7 +533,65 @@ export default function SubjectsPage() {
                 </CardContent>
             </Card>
 
-            {/* Delete Confirmation Modal */}
+            <Dialog open={prereqDialogOpen} onOpenChange={setPrereqDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Prerequisites for {activeSubject?.code}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="flex gap-2">
+                            <Select value={newPrereqId} onValueChange={setNewPrereqId}>
+                                <SelectTrigger className="flex-1">
+                                    <SelectValue placeholder="Select a prerequisite" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {subjects
+                                        .filter((sub) => sub.id !== activeSubject?.id)
+                                        .map((sub) => (
+                                            <SelectItem key={sub.id} value={sub.id}>
+                                                {sub.code} - {sub.title}
+                                            </SelectItem>
+                                        ))}
+                                </SelectContent>
+                            </Select>
+                            <Button size="sm" onClick={handleAddPrerequisite} disabled={!newPrereqId}>
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                        </div>
+
+                        <div className="border rounded-md">
+                            {loadingPrereqs ? (
+                                <div className="p-4 flex justify-center">
+                                    <Loader2 className="animate-spin h-4 w-4" />
+                                </div>
+                            ) : prerequisites.length === 0 ? (
+                                <div className="p-4 text-center text-sm text-muted-foreground">
+                                    No prerequisites set
+                                </div>
+                            ) : (
+                                <ul className="divide-y">
+                                    {prerequisites.map((p) => (
+                                        <li key={p.id} className="flex items-center justify-between p-3">
+                                            <span>
+                                                {p.code} - {p.title}
+                                            </span>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-red-500"
+                                                onClick={() => handleDeletePrerequisite(p.id)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
             <DeleteConfirmDialog
                 open={deleteModalOpen}
                 onOpenChange={setDeleteModalOpen}

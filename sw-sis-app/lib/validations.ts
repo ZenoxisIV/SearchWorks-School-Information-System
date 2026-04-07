@@ -83,7 +83,7 @@ export const subjectSchema = z.object({
         .min(1, { message: "Subject code is required" })
         .min(2, { message: "Subject code must be at least 2 characters" })
         .max(20, { message: "Subject code must be at most 20 characters" })
-        .regex(/^[A-Z0-9\-]+$/, { message: "Subject code must be alphanumeric with hyphens" }),
+        .regex(/^[A-Za-z0-9]+$/, { message: "Subject code must be alphanumeric only" }),
     title: z
         .string()
         .min(1, { message: "Subject title is required" })

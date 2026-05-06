@@ -153,7 +153,7 @@ export function Sidebar({ onMobileClose }: SidebarProps) {
             {/* Footer */}
             <div className="border-t p-3">
                 <a
-                    href="https://github.com/ZenoxisIV/SearchWorks-School-Information-System"
+                    href="https://github.com/ZenoxisIV/Nexus-School-Information-System"
                     target="_blank"
                     rel="noopener noreferrer"
                     className={cn(

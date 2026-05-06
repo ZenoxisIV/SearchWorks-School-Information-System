@@ -52,7 +52,7 @@ export default function LoginPage() {
 
             const data = await res.json();
             localStorage.setItem("user", JSON.stringify(data.user));
-            toast.success("Welcome to SearchWorks SIS");
+            toast.success("Welcome to Nexus SIS");
             router.push("/students");
         } catch (err) {
             console.error(err);
@@ -70,7 +70,7 @@ export default function LoginPage() {
                         <div className="flex items-center justify-center rounded-2xl bg-primary/10 p-3">
                             <GraduationCap className="h-8 w-8 text-primary" />
                         </div>
-                        <CardTitle className="text-xl font-semibold tracking-tight">SearchWorks</CardTitle>
+                        <CardTitle className="text-xl font-semibold tracking-tight">Nexus</CardTitle>
                         <p className="text-sm text-muted-foreground">School Information System</p>
                     </div>
                     <CardDescription className="text-sm">Sign in to access your academic dashboard</CardDescription>
@@ -90,7 +90,7 @@ export default function LoginPage() {
                                 <Input
                                     id="email"
                                     type="email"
-                                    placeholder="faculty@searchworks.edu"
+                                    placeholder="faculty@nexus.edu.ph"
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     className={errors.email ? "border-destructive pl-2" : "pl-2"}
@@ -140,7 +140,7 @@ export default function LoginPage() {
                         </Button>
 
                         <p className="text-xs text-muted-foreground text-center mt-2">
-                            © {new Date().getFullYear()} SearchWorks SIS • All rights reserved
+                            © {new Date().getFullYear()} Nexus SIS • All rights reserved
                         </p>
                     </CardFooter>
                 </form>

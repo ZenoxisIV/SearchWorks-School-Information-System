@@ -12,13 +12,13 @@ async function seed() {
     const adminResult = await db
         .insert(s.users)
         .values({
-            email: "admin@searchworks.edu.ph",
+            email: "admin@nexus.edu.ph",
             passwordHash,
             role: "admin",
         })
         .returning();
 
-    console.log(`Admin created: admin@searchworks.edu.ph / ${adminPassword}`);
+    console.log(`Admin created: admin@nexus.edu.ph / ${adminPassword}`);
 
     // 2. Courses (5 courses)
     const courseValues = [

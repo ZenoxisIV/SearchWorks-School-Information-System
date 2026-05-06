@@ -1,6 +1,6 @@
 Overview
 --------
-SearchWorks is a small school information system built with [Next.js](https://nextjs.org/) (App Router), [Fastify](https://fastify.dev/) (server routes), [Drizzle ORM](https://orm.drizzle.team/), and [Neon](https://neon.com/).
+Nexus is a small school information system built with [Next.js](https://nextjs.org/) (App Router), [Fastify](https://fastify.dev/) (server routes), [Drizzle ORM](https://orm.drizzle.team/), and [Neon](https://neon.com/).
 
 Setup
 -----
@@ -13,7 +13,7 @@ Setup
 
 ```bash
 git clone <repo-url>
-cd SearchWorks-School-Information-System/sw-sis-app
+cd Nexus-School-Information-System/sw-sis-app
 pnpm install
 ```
 
@@ -65,14 +65,14 @@ Seed Instructions
 - Script location: `db/seed.ts`.
 - How to run: `pnpm db:seed` (the script uses `tsx` and will load `.env` automatically per the `package.json` script).
 - What it creates:
-  - Admin user: `admin@searchworks.edu.ph` / password `admin123`
+  - Admin user: `admin@nexus.edu.ph` / password `admin123`
   - 5 courses and 15 subjects (3 per course)
   - Several prerequisite relations
   - 50 students distributed across the courses
 
 Admin Credentials
 -----------------
-- Email: `admin@searchworks.edu.ph`
+- Email: `admin@nexus.edu.ph`
 - Password: `admin123`
 
 Key Assumptions and Validation Rules

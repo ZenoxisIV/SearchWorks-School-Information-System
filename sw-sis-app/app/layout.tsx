@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: "SearchWorks School Information System",
+    title: "Nexus School Information System",
     description: "Official School Information System for managing students, grades, and courses.",
     keywords: ["school", "information system", "student management", "grades", "courses"],
     authors: [{ name: "Ivan Cadiang", url: "https://github.com/ZenoxisIV" }],
